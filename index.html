@@ -148,20 +148,20 @@ a{color:#ffe29a}
 <section id="inputs">
 <h2>입력값</h2>
 <div class="inputs">
-<div><label>매도가 (농성 SK뷰)</label><input type="text" inputmode="numeric" data-k="sell" value="563,000,000"></div>
-<div><label>매수가 (아델리움 3차)</label><input type="text" inputmode="numeric" data-k="buy" value="930,000,000"></div>
+<div><label>매도가 (농성 SK뷰)</label><input type="text" inputmode="numeric" data-k="sell" value="0"></div>
+<div><label>매수가 (아델리움 3차)</label><input type="text" inputmode="numeric" data-k="buy" value="0"></div>
 <div><label>전용면적 (㎡)</label><input type="number" step="0.01" data-k="area" value="84.81"><div class="hint">85㎡ 이하면 취득세 등 3.3%, 초과면 3.5%</div></div>
 <div><label>중개수수료 할인 적용률 (%)</label><input type="number" step="1" data-k="disc" value="30"><div class="hint">법정 수수료(0.5%)의 몇 %를 낼지</div></div>
-<div><label>인테리어</label><input type="text" inputmode="numeric" data-k="int" value="60,000,000"><div class="hint" id="h_int"></div></div>
-<div><label>가전</label><input type="text" inputmode="numeric" data-k="appl" value="20,000,000"><div class="hint" id="h_appl"></div></div>
-<div><label>청약통장 해지금</label><input type="text" inputmode="numeric" data-k="sub" value="20,000,000"><div class="hint">쓸 수 있는 돈에 더해집니다</div></div>
-<div><label>주담대 금액</label><input type="text" inputmode="numeric" data-k="loan" value="450,000,000"></div>
+<div><label>인테리어</label><input type="text" inputmode="numeric" data-k="int" value="0"><div class="hint" id="h_int"></div></div>
+<div><label>가전</label><input type="text" inputmode="numeric" data-k="appl" value="0"><div class="hint" id="h_appl"></div></div>
+<div><label>청약통장 해지금</label><input type="text" inputmode="numeric" data-k="sub" value="0"><div class="hint">쓸 수 있는 돈에 더해집니다</div></div>
+<div><label>주담대 금액</label><input type="text" inputmode="numeric" data-k="loan" value="0"></div>
 <div><label>예상 금리 (%)</label><input type="number" step="0.01" data-k="rate" value="5"></div>
 <div><label>보유 기간 (년)</label><input type="number" step="1" data-k="hold" value="10"></div>
-<div><label>마이너스통장 사용액</label><input type="text" inputmode="numeric" data-k="mi" value="10,000,000"><div class="hint">한도 2,000만 원 · 대출 전 해지 권장</div></div>
-<div><label>본인 연소득</label><input type="text" inputmode="numeric" data-k="inc1" value="70,000,000"></div>
-<div><label>부부 합산 연소득</label><input type="text" inputmode="numeric" data-k="inc2" value="140,000,000"></div>
-<div><label>마이너스통장 한도</label><input type="text" inputmode="numeric" data-k="milim" value="20,000,000"></div>
+<div><label>마이너스통장 사용액</label><input type="text" inputmode="numeric" data-k="mi" value="0"><div class="hint">한도 2,000만 원 · 대출 전 해지 권장</div></div>
+<div><label>본인 연소득</label><input type="text" inputmode="numeric" data-k="inc1" value="0"></div>
+<div><label>부부 합산 연소득</label><input type="text" inputmode="numeric" data-k="inc2" value="0"></div>
+<div><label>마이너스통장 한도</label><input type="text" inputmode="numeric" data-k="milim" value="0"></div>
 </div>
 </section>
 
@@ -299,7 +299,7 @@ const $=s=>document.querySelector(s);
 const num=v=>Number(String(v).replace(/[^0-9.\-]/g,''))||0;
 const won=v=>Math.round(v).toLocaleString('ko-KR');
 const man=v=>{const m=Math.round(v/10000);const e=Math.floor(Math.abs(m)/10000),r=Math.abs(m)%10000;const s=m<0?'−':'';const t=(e?e+'억 ':'')+(r?r.toLocaleString('ko-KR')+'만':'');return t?s+t.trim()+' 원':'0원'};
-const pct=v=>(v*100).toFixed(1)+'%';
+const pct=v=>isFinite(v)?(v*100).toFixed(1)+'%':'-';
 function pmt(r,n,p){r=r/12;return r?p*r/(1-Math.pow(1+r,-n)):p/n}
 function bal(r,k,m,p){r=r/12;return p*Math.pow(1+r,k)-m*(Math.pow(1+r,k)-1)/r}
 function val(k){return num(document.querySelector(`[data-k="${k}"]`).value)}
@@ -331,10 +331,10 @@ function calc(){
  const miY=milim/5+milim*0.06, k=hold*12;
  const L=[360,480].map(n=>{const m=pmt(rate,n,loan),b=bal(rate,k,m,loan),y=m*12;return{n,m,fi:loan*rate/12,fp:m-loan*rate/12,y,paid:m*k,b,pr:loan-b,int:m*k-(loan-b),ti:m*n-loan,tt:m*n,d1:y/inc1,d1m:(y+miY)/inc1,d2:y/inc2,d2m:(y+miY)/inc2}});
  const a=L[0],c=L[1];
- const badge=v=>`<br><span class="badge ${v<=0.4?'ok':'no'}">${v<=0.4?'가능':'초과'}</span>`;
+ const badge=v=>isFinite(v)?`<br><span class="badge ${v<=0.4?'ok':'no'}">${v<=0.4?'가능':'초과'}</span>`:'';
  const lr=[['월 상환액','m','w',1],['첫 달 이자','fi','w'],['첫 달 원금','fp','w'],['연 상환액','y','w'],[`${hold}년 동안 낸 돈`,'paid','w'],[`${hold}년 뒤 남은 대출`,'b','w',1],[`${hold}년 동안 갚은 원금`,'pr','w'],[`${hold}년 동안 낸 이자`,'int','w'],['끝까지 갚을 때 총이자','ti','w'],['끝까지 갚을 때 총상환액','tt','w'],
  ['DSR (본인 소득, 마통 해지)','d1','p'],['DSR (본인 소득, 마통 유지)','d1m','p'],['DSR (부부 합산, 마통 해지)','d2','p'],['DSR (부부 합산, 마통 유지)','d2m','p']];
- $('#loanBody').innerHTML=lr.map(([t,key,f,hl])=>{const x=a[key],y=c[key];const fm=f==='w'?won:pct;const d=f==='w'?(x-y>0?'+':'')+won(x-y):((x-y)*100>0?'+':'')+((x-y)*100).toFixed(1)+'%p';return`<tr${hl?' class="tot"':''}><td>${t}</td><td class="n">${fm(x)}${f==='p'?badge(x):''}</td><td class="n">${fm(y)}${f==='p'?badge(y):''}</td><td class="n">${d}</td></tr>`}).join('');
+ $('#loanBody').innerHTML=lr.map(([t,key,f,hl])=>{const x=a[key],y=c[key];const fm=f==='w'?won:pct;const d=f==='w'?(x-y>0?'+':'')+won(x-y):(isFinite(x-y)?((x-y)*100>0?'+':'')+((x-y)*100).toFixed(1)+'%p':'-');return`<tr${hl?' class="tot"':''}><td>${t}</td><td class="n">${fm(x)}${f==='p'?badge(x):''}</td><td class="n">${fm(y)}${f==='p'?badge(y):''}</td><td class="n">${d}</td></tr>`}).join('');
 
  $('#k_short1').textContent=man(s1);$('#k_short2').textContent=man(s2);
  $('#k_m40').textContent=won(c.m)+'원';$('#k_m30').textContent=won(a.m)+'원';
@@ -375,7 +375,7 @@ const esc=s=>String(s??'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(
 const KEY='adelium-interior';
 
 const DEF={
- bInt:60000000,bAppl:20000000,
+ bInt:0,bAppl:0,
  work:['철거','샷시(창호)','도배','바닥','욕실','주방(싱크대)','조명·전기','필름·도장','중문','붙박이장','입주 청소','기타'].map(n=>({n,a:'',m:''})),
  vendors:[{n:'',a:'',p:'',c:'',m:''},{n:'',a:'',p:'',c:'',m:''},{n:'',a:'',p:'',c:'',m:''}],
  appl:['냉장고','김치냉장고','세탁기','건조기','TV','에어컨','식기세척기','로봇청소기'].map(n=>({d:false,n,a:'',m:''})),
@@ -467,8 +467,8 @@ render();
 </script>
 <script>setTimeout(()=>{const b=document.getElementById('cloud');if(b.textContent.includes('연결 중'))b.textContent='🟡 서버 연결 안 됨 · 이 기기에만 저장'},10000)</script>
 <script type="module">
-// 모든 기기 공유 저장: Firestore 문서 adelium/plan 하나에 자금 계획 + 인테리어 값을 함께 저장
-// 로그인 없음: 링크로 들어온 누구나 보고 고칠 수 있음 (Firestore 규칙에서 adelium/plan 읽기·쓰기 허용)
+// 모든 기기 공유 저장: Firestore 문서 plans/{비밀열쇠} 하나에 자금 계획 + 인테리어 값을 함께 저장
+// 로그인 없음: 비밀 열쇠 링크를 가진 사람만 보고 고칠 수 있음 (Firestore 규칙: plans/{열쇠} 하나씩만 읽기·쓰기, 목록 보기·삭제 금지)
 import { initializeApp } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-app.js";
 import { getFirestore, doc, getDoc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js";
 
@@ -478,7 +478,12 @@ const app=initializeApp({
   projectId:"adelium-plan",
   storageBucket:"adelium-plan.firebasestorage.app"
 });
-const db=getFirestore(app),ref=doc(db,'adelium','plan');
+// 비밀 열쇠: 링크 끝 #k=열쇠 → 이 기기에 기억. 열쇠가 곧 저장 위치(plans/열쇠)라서 열쇠를 모르면 값을 볼 수 없음
+let key=null;
+const hk=location.hash.match(/k=([A-Za-z0-9]{32,})/);
+if(hk){key=hk[1];try{localStorage.setItem('adelium-key',key)}catch(e){}}
+else{try{key=localStorage.getItem('adelium-key')}catch(e){}}
+const db=getFirestore(app),ref=key?doc(db,'plans',key):null;
 const btn=document.getElementById('cloud');
 const show=t=>{btn.textContent=t};
 let loaded=false,dirty=false,timer=null;
@@ -486,6 +491,7 @@ const hhmm=d=>d.toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-di
 
 // 1) 접속하면 마지막 저장값 불러오기
 async function load(){
+  if(!ref)return show('🔒 비밀 링크로 들어오면 저장된 값이 보입니다');
   try{
     show('☁️ 불러오는 중…');
     const snap=await getDoc(ref);
@@ -496,12 +502,17 @@ async function load(){
       window.interiorState.set(d.interior);   // 인테리어 먼저 (합계가 자금 계획 칸에 반영됨)
       window.mainState.set(d.main);
       show('☁️ 마지막 저장 '+(d.updatedAt?hhmm(d.updatedAt.toDate()):'')+' · 바꾸면 자동 저장');
-    }else show('☁️ 연결됨 · 바꾸면 자동 저장');
-    loaded=true;dirty=false;
+      loaded=true;dirty=false;
+    }else{   // 처음 쓰는 열쇠: 이 기기에 입력된 값이 있으면 서버에 올려 둠 (빈 값으로 덮어쓰지 않게)
+      loaded=true;
+      const has=Number(String(window.mainState.get().inputs.buy).replace(/[^0-9]/g,''))>0;
+      if(has)return save();
+      show('☁️ 연결됨 · 바꾸면 자동 저장');
+    }
   }catch(e){console.warn('불러오기 실패',e.code||e);show('🟡 서버 연결 안 됨 · 이 기기에만 저장 (눌러서 다시 연결)');}
 }
 // 2) 값을 바꾸면 1.5초 뒤 저장
-function schedule(){dirty=true;if(!loaded)return;clearTimeout(timer);show('💾 저장 대기…');timer=setTimeout(save,1500);}
+function schedule(){dirty=true;if(!loaded||!ref)return;clearTimeout(timer);show('💾 저장 대기…');timer=setTimeout(save,1500);}
 async function save(){
   try{
     show('💾 저장 중…');
@@ -510,7 +521,7 @@ async function save(){
   }catch(e){console.warn('저장 실패',e.code||e);show('🟡 저장 실패 ('+(e.code||'오류')+') · 눌러서 다시 시도');}
 }
 // 3) 버튼: 연결 안 됐으면 다시 불러오기, 저장 실패했으면 다시 저장
-btn.addEventListener('click',()=>{if(!loaded)load();else if(dirty)save();});
+btn.addEventListener('click',()=>{if(!ref)return;if(!loaded)load();else if(dirty)save();});
 const sw=document.getElementById('sw');
 sw.addEventListener('input',schedule);
 sw.addEventListener('change',schedule);
