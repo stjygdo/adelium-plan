@@ -116,6 +116,9 @@ a{color:#ffe29a}
 .dots i{background:#f5c76b}
 .dots i.on{box-shadow:0 0 8px #f5c76b}
 @media (prefers-reduced-motion:reduce){header h1{animation:none}}
+#cloud{position:fixed;right:12px;bottom:12px;z-index:9;border:1px solid rgba(245,199,107,.45);background:rgba(6,10,28,.75);backdrop-filter:blur(8px);color:#ffe9b0;font:inherit;font-size:12px;padding:6px 12px;border-radius:999px;cursor:pointer;max-width:60vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#cloud:hover{background:rgba(245,199,107,.15)}
+@media (max-width:600px){.dots{left:16px;transform:none}}
 </style>
 </head>
 <body>
@@ -288,6 +291,7 @@ a{color:#ffe29a}
 </main>
 </div>
 </div>
+<button id="cloud" type="button">☁️ 연결 중…</button>
 <div class="dots"><i class="on"></i><i></i></div>
 <script>
 const $=s=>document.querySelector(s);
@@ -338,10 +342,21 @@ function calc(){
  banks.forEach((_,i)=>{const r=num(document.querySelector(`[data-bank="${i}"]`).value)/100;$('#bm'+i).textContent=r?won(pmt(r,480,loan))+'원':'-'});
  todos.forEach((_,i)=>$('#tr'+i).classList.toggle('done',document.querySelector(`[data-todo="${i}"]`).checked));
 }
+const INKEY='adelium-inputs';
+function getInputs(){const o={};document.querySelectorAll('[data-k]').forEach(el=>o[el.dataset.k]=el.value);return o}
+function setInputs(o){Object.entries(o||{}).forEach(([k,v])=>{const el=document.querySelector(`[data-k="${k}"]`);if(el&&!el.readOnly)el.value=v})}
+function saveInputs(){try{localStorage.setItem(INKEY,JSON.stringify(getInputs()))}catch(e){}}
+try{setInputs(JSON.parse(localStorage.getItem(INKEY)||'null'))}catch(e){}
 document.querySelectorAll('[data-k]').forEach(el=>{
- el.addEventListener('input',calc);
- if(el.type==='text')el.addEventListener('blur',()=>{el.value=num(el.value).toLocaleString('ko-KR')});
+ el.addEventListener('input',()=>{calc();saveInputs()});
+ if(el.type==='text')el.addEventListener('blur',()=>{el.value=num(el.value).toLocaleString('ko-KR');saveInputs()});
 });
+window.mainState={
+ get:()=>({inputs:getInputs(),rates:store.rates||{},todo:store.todo||{}}),
+ set:o=>{if(!o)return;setInputs(o.inputs);saveInputs();store.rates=o.rates||{};store.todo=o.todo||{};save();
+  document.querySelectorAll('[data-bank]').forEach(el=>el.value=store.rates[el.dataset.bank]||'');
+  document.querySelectorAll('[data-todo]').forEach(el=>el.checked=!!store.todo[el.dataset.todo]);calc();}
+};
 document.querySelectorAll('[data-bank]').forEach(el=>el.addEventListener('input',()=>{store.rates=store.rates||{};store.rates[el.dataset.bank]=el.value;save();calc()}));
 document.querySelectorAll('[data-todo]').forEach(el=>el.addEventListener('change',()=>{store.todo=store.todo||{};store.todo[el.dataset.todo]=el.checked;save();calc()}));
 calc();
@@ -417,6 +432,7 @@ P.addEventListener('click',e=>{
   st[t].splice(i,1);save();render();}
  if(d.add){const blank={work:{n:'',a:'',m:''},vendors:{n:'',a:'',p:'',c:'',m:''},appl:{d:false,n:'',a:'',m:''},todo:{d:false,n:'',w:''}}[d.add];st[d.add].push(blank);save();render();const rows=document.querySelectorAll(`[data-t="${d.add}"][data-f="n"]`);rows[rows.length-1]?.focus();}
 });
+window.interiorState={get:()=>JSON.parse(JSON.stringify(st)),set:o=>{if(!o)return;st=Object.assign(structuredClone(DEF),o);render();}};
 render();
 
 })();</script>
@@ -445,6 +461,58 @@ render();
  window.addEventListener('resize',()=>{const i=tabs.findIndex(t=>t.classList.contains('on'));sw.scrollLeft=i*sw.clientWidth});
  let s=0;try{s=+localStorage.getItem('adelium-tab')||0}catch(e){}sw.scrollLeft=s*sw.clientWidth;mark();
 })();
+</script>
+<script>setTimeout(()=>{const b=document.getElementById('cloud');if(b.textContent.includes('연결 중'))b.textContent='🟡 서버 연결 안 됨 · 이 기기에만 저장'},10000)</script>
+<script type="module">
+// 모든 기기 공유 저장: Firestore 문서 adelium/plan 하나에 자금 계획 + 인테리어 값을 함께 저장
+// 로그인 없음: 링크로 들어온 누구나 보고 고칠 수 있음 (Firestore 규칙에서 adelium/plan 읽기·쓰기 허용)
+import { initializeApp } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-app.js";
+import { getFirestore, doc, getDoc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js";
+
+const app=initializeApp({
+  apiKey:"AIzaSyAqcVAUFN154jqSID14RCPHFiUdvCuugFI",
+  authDomain:"adelium-plan.firebaseapp.com",
+  projectId:"adelium-plan",
+  storageBucket:"adelium-plan.firebasestorage.app"
+});
+const db=getFirestore(app),ref=doc(db,'adelium','plan');
+const btn=document.getElementById('cloud');
+const show=t=>{btn.textContent=t};
+let loaded=false,dirty=false,timer=null;
+const hhmm=d=>d.toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'});
+
+// 1) 접속하면 마지막 저장값 불러오기
+async function load(){
+  try{
+    show('☁️ 불러오는 중…');
+    const snap=await getDoc(ref);
+    if(snap.metadata.fromCache)throw{code:'cache'};
+    if(dirty){loaded=true;return save();}   // 불러오기 전에 이미 고쳤으면 고친 값을 저장
+    if(snap.exists()){
+      const d=snap.data();
+      window.interiorState.set(d.interior);   // 인테리어 먼저 (합계가 자금 계획 칸에 반영됨)
+      window.mainState.set(d.main);
+      show('☁️ 마지막 저장 '+(d.updatedAt?hhmm(d.updatedAt.toDate()):'')+' · 바꾸면 자동 저장');
+    }else show('☁️ 연결됨 · 바꾸면 자동 저장');
+    loaded=true;dirty=false;
+  }catch(e){console.warn('불러오기 실패',e.code||e);show('🟡 서버 연결 안 됨 · 이 기기에만 저장 (눌러서 다시 연결)');}
+}
+// 2) 값을 바꾸면 1.5초 뒤 저장
+function schedule(){dirty=true;if(!loaded)return;clearTimeout(timer);show('💾 저장 대기…');timer=setTimeout(save,1500);}
+async function save(){
+  try{
+    show('💾 저장 중…');
+    await setDoc(ref,{main:window.mainState.get(),interior:window.interiorState.get(),updatedAt:serverTimestamp()});
+    dirty=false;show('☁️ 모든 기기에 저장됨 · '+hhmm(new Date()));
+  }catch(e){console.warn('저장 실패',e.code||e);show('🟡 저장 실패 ('+(e.code||'오류')+') · 눌러서 다시 시도');}
+}
+// 3) 버튼: 연결 안 됐으면 다시 불러오기, 저장 실패했으면 다시 저장
+btn.addEventListener('click',()=>{if(!loaded)load();else if(dirty)save();});
+const sw=document.getElementById('sw');
+sw.addEventListener('input',schedule);
+sw.addEventListener('change',e=>{if(e.target.type==='checkbox')schedule()});
+sw.addEventListener('click',e=>{if(e.target.closest('.add,.del'))setTimeout(schedule,0)});
+load();
 </script>
 </body>
 </html>
