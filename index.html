@@ -72,15 +72,61 @@ tr.done td input[type=text]{color:var(--muted);text-decoration:line-through}
 .add:hover{background:var(--accent2)}
 .chk{width:18px;height:18px}
 @media (max-width:600px){#p1 th,#p1 td{padding:6px 4px}}
+
+/* ===== 우주·행운 테마 ===== */
+:root{--bg:#060a1c;--card:rgba(18,22,54,.72);--ink:#eef0ff;--muted:#a9b0d6;--line:rgba(255,255,255,.09);--accent:#f5c76b;--accent2:rgba(245,199,107,.12);--warn:#ff8a8a;--ok:#6fe3b0;--hl:rgba(255,196,80,.2)}
+body{background:radial-gradient(1200px 700px at 15% -10%,#3b2a7a 0%,transparent 60%),radial-gradient(900px 600px at 110% 20%,#0f4a6e 0%,transparent 55%),radial-gradient(800px 500px at 50% 120%,#5a2a5e 0%,transparent 60%),#060a1c;color:var(--ink)}
+#sky{position:fixed;inset:0;z-index:0;pointer-events:none}
+.tabs,.swiper,.dots{position:relative;z-index:1}
+.dots{position:fixed;z-index:9}
+.tabs{background:rgba(6,10,28,.6);backdrop-filter:blur(8px);border-bottom:1px solid rgba(245,199,107,.25)}
+.tabs button{color:#b9bfe3}
+.tabs button.on{background:linear-gradient(135deg,#ffe29a,#f5b84b 55%,#e88f3c);color:#2a1a00;box-shadow:0 0 18px rgba(245,199,107,.55)}
+header{background:transparent;padding:30px 20px 22px;text-align:center}
+header h1{font-size:24px;background:linear-gradient(90deg,#fff3c4,#f5c76b,#ffd9f0,#bfe3ff,#f5c76b);background-size:300% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:shine 8s linear infinite;text-shadow:0 0 24px rgba(245,199,107,.25)}
+header p{color:#c9cff0;opacity:1}
+header .luck{display:inline-block;margin-top:10px;padding:4px 14px;border-radius:999px;font-size:13px;color:#ffe9b0;border:1px solid rgba(245,199,107,.4);background:rgba(245,199,107,.08);box-shadow:0 0 14px rgba(245,199,107,.25)}
+header a{color:#ffe29a}
+@keyframes shine{to{background-position:300% 0}}
+nav{background:rgba(8,12,34,.82);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+nav a{color:#d7dcff}
+nav a:hover{background:rgba(255,255,255,.08)}
+nav a.go{background:linear-gradient(135deg,#ffe29a,#f5b84b);color:#2a1a00;font-weight:700}
+section,.kpi{background:var(--card);border:1px solid rgba(255,255,255,.1);backdrop-filter:blur(10px);box-shadow:0 8px 30px rgba(0,0,0,.35)}
+h2{color:#ffe7a8}
+.kpi .v{color:#fff}
+.kpi.main{border-color:rgba(245,199,107,.6);background:linear-gradient(145deg,rgba(245,199,107,.18),rgba(120,90,220,.15));box-shadow:0 0 22px rgba(245,199,107,.28),inset 0 0 20px rgba(245,199,107,.08)}
+.kpi.main .v{color:#ffe29a;text-shadow:0 0 12px rgba(245,199,107,.5)}
+input[type=text],input[type=number],select{background:var(--hl);border:1px solid rgba(255,214,120,.42);color:#fff6dc}
+input::placeholder{color:rgba(255,246,220,.4)}
+input:focus,select:focus{outline:2px solid #f5c76b;border-color:#f5c76b;box-shadow:0 0 12px rgba(245,199,107,.45)}
+input[type=checkbox],.chk{accent-color:#f5c76b}
+th{background:rgba(255,255,255,.06);color:#cdd3f5}
+tr.sub td{background:rgba(140,120,255,.14);color:#e3dcff}
+tr.tot td{background:rgba(245,199,107,.14);color:#ffe7a8}
+tr.best td{background:rgba(111,227,176,.14)}
+.ok{background:rgba(111,227,176,.16);color:var(--ok)}.no{background:rgba(255,138,138,.16);color:var(--warn)}
+.rec{background:rgba(245,199,107,.1);border-left-color:#f5c76b;color:#f3eedc}
+.small,td .note,.hint,label{color:var(--muted)}
+a{color:#ffe29a}
+.add{background:rgba(255,255,255,.04);border-color:rgba(245,199,107,.5);color:#ffe29a}
+.add:hover{background:rgba(245,199,107,.12)}
+.del{color:#8f96c0}
+.dots{background:rgba(6,10,28,.6);border:1px solid rgba(245,199,107,.3)}
+.dots i{background:#f5c76b}
+.dots i.on{box-shadow:0 0 8px #f5c76b}
+@media (prefers-reduced-motion:reduce){header h1{animation:none}}
 </style>
 </head>
 <body>
+<canvas id="sky"></canvas>
 <div class="tabs"><button class="on">💰 자금 계획</button><button>🛠️ 인테리어</button></div>
 <div class="swiper" id="sw">
 <div class="panel" id="p0">
 <header>
-<h1>🏠 아델리움 3차 갈아타기 자금 계획</h1>
+<h1>✨ 아델리움 3차 갈아타기 자금 계획 ✨</h1>
 <p>농성 SK뷰 매도 → 봉선동 한국아델리움 3차 매수 · 2026년 11월 기준 추정 · 노란 칸을 바꾸면 자동 계산됩니다</p>
+<div class="luck">🍀 우주의 모든 기운이 새 보금자리로 모입니다 🌙</div>
 </header>
 <nav>
 <a href="#money">자금 계획</a><a href="#loan">30년 vs 40년</a><a href="#facts">대출 핵심</a><a href="#banks">은행 비교</a><a href="#todo">할 일</a><a href="#" class="go" data-go="1">인테리어 →</a>
@@ -175,7 +221,7 @@ tr.done td input[type=text]{color:var(--muted);text-decoration:line-through}
 </div>
 <div class="panel" id="p1">
 <header>
-<h1>🛠️ 아델리움 3차 인테리어 계획</h1>
+<h1>🌟 아델리움 3차 인테리어 계획 🌟</h1>
 <p>노란 칸을 바꾸면 자동 계산·저장됩니다 · 합계는 자금 계획의 인테리어·가전 칸에 자동 반영됩니다</p>
 </header>
 <nav>
@@ -264,7 +310,7 @@ $('#todoBody').innerHTML=todos.map((t,i)=>`<tr id="tr${i}"><td><input type="chec
 
 function applyInterior(intT,applT){[['int',intT],['appl',applT]].forEach(([k,v])=>{const el=document.querySelector(`[data-k="${k}"]`),h=document.querySelector('#h_'+k);
  if(v==null){if(el.readOnly){el.readOnly=false;el.style.background='';h.textContent='';}return;}
- el.value=Math.round(v).toLocaleString('ko-KR');el.readOnly=true;el.style.background='#eef2f6';h.innerHTML='<a href="#" class="go" data-go="1">인테리어</a>에서 자동 반영';});
+ el.value=Math.round(v).toLocaleString('ko-KR');el.readOnly=true;el.style.background='rgba(255,255,255,.06)';h.innerHTML='<a href="#" class="go" data-go="1">인테리어</a>에서 자동 반영';});
  if(typeof calc==='function')calc();}
 function calc(){
  const sell=val('sell'),buy=val('buy'),area=val('area'),disc=val('disc')/100,interior=val('int'),appl=val('appl'),subs=val('sub'),loan=val('loan'),rate=val('rate')/100,hold=val('hold'),mi=val('mi'),inc1=val('inc1'),inc2=val('inc2'),milim=val('milim');
@@ -374,6 +420,20 @@ P.addEventListener('click',e=>{
 render();
 
 })();</script>
+<script>
+(()=>{const c=document.getElementById('sky'),x=c.getContext('2d');let W,H,stars=[],shoot=null;const still=matchMedia('(prefers-reduced-motion: reduce)').matches;
+ const cols=['#ffffff','#fff3c4','#cfe6ff','#ffd9f0'];
+ function size(){const d=devicePixelRatio||1;W=innerWidth;H=innerHeight;c.width=W*d;c.height=H*d;c.style.width=W+'px';c.style.height=H+'px';x.setTransform(d,0,0,d,0,0);
+  stars=Array.from({length:Math.round(W*H/2600)},()=>({x:Math.random()*W,y:Math.random()*H,r:Math.random()*1.4+.3,p:Math.random()*6.28,s:Math.random()*.02+.005,c:cols[Math.random()*4|0]}));}
+ function draw(){x.clearRect(0,0,W,H);
+  for(const t of stars){t.p+=t.s;x.globalAlpha=.35+.65*Math.abs(Math.sin(t.p));x.fillStyle=t.c;x.beginPath();x.arc(t.x,t.y,t.r,0,6.28);x.fill();
+   if(t.r>1.5){x.globalAlpha*=.35;x.fillRect(t.x-t.r*3,t.y-.3,t.r*6,.6);x.fillRect(t.x-.3,t.y-t.r*3,.6,t.r*6);}}
+  if(!shoot&&Math.random()<.004)shoot={x:Math.random()*W*.8+W*.2,y:Math.random()*H*.4,l:0};
+  if(shoot){shoot.l+=1;const k=shoot.l*9,g=x.createLinearGradient(shoot.x-k,shoot.y+k*.45,shoot.x-k+90,shoot.y+k*.45-40);g.addColorStop(0,'rgba(255,226,154,0)');g.addColorStop(1,'rgba(255,240,200,.95)');
+   x.globalAlpha=Math.max(0,1-shoot.l/60);x.strokeStyle=g;x.lineWidth=2;x.beginPath();x.moveTo(shoot.x-k,shoot.y+k*.45);x.lineTo(shoot.x-k+90,shoot.y+k*.45-40);x.stroke();if(shoot.l>60)shoot=null;}
+  x.globalAlpha=1;if(!still)requestAnimationFrame(draw);}
+ addEventListener('resize',()=>{size();if(still)draw()});size();draw();})();
+</script>
 <script>
 (()=>{const sw=document.getElementById('sw'),tabs=[...document.querySelectorAll('.tabs button')],dots=[...document.querySelectorAll('.dots i')];
  const go=i=>sw.scrollTo({left:i*sw.clientWidth,behavior:'smooth'});
