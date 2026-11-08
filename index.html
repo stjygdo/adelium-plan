@@ -55,7 +55,7 @@ td .note{display:block;font-size:12px;color:var(--muted);font-weight:400}
 <p>농성 SK뷰 매도 → 봉선동 한국아델리움 3차 매수 · 2026년 11월 기준 추정 · 노란 칸을 바꾸면 자동 계산됩니다</p>
 </header>
 <nav>
-<a href="#money">자금 계획</a><a href="#loan">30년 vs 40년</a><a href="#facts">대출 핵심</a><a href="#banks">은행 비교</a><a href="#todo">할 일</a>
+<a href="#money">자금 계획</a><a href="#loan">30년 vs 40년</a><a href="#facts">대출 핵심</a><a href="#banks">은행 비교</a><a href="#todo">할 일</a><a href="interior.html" style="background:var(--accent);color:#fff">인테리어 계획 →</a>
 </nav>
 <main>
 
@@ -73,8 +73,8 @@ td .note{display:block;font-size:12px;color:var(--muted);font-weight:400}
 <div><label>매수가 (아델리움 3차)</label><input type="text" data-k="buy" value="930,000,000"></div>
 <div><label>전용면적 (㎡)</label><input type="number" step="0.01" data-k="area" value="84.81"><div class="hint">85㎡ 이하면 취득세 등 3.3%, 초과면 3.5%</div></div>
 <div><label>중개수수료 할인 적용률 (%)</label><input type="number" step="1" data-k="disc" value="30"><div class="hint">법정 수수료(0.5%)의 몇 %를 낼지</div></div>
-<div><label>인테리어</label><input type="text" data-k="int" value="60,000,000"></div>
-<div><label>가전</label><input type="text" data-k="appl" value="20,000,000"></div>
+<div><label>인테리어</label><input type="text" data-k="int" value="60,000,000"><div class="hint" id="h_int"></div></div>
+<div><label>가전</label><input type="text" data-k="appl" value="20,000,000"><div class="hint" id="h_appl"></div></div>
 <div><label>청약통장 해지금</label><input type="text" data-k="sub" value="20,000,000"><div class="hint">쓸 수 있는 돈에 더해집니다</div></div>
 <div><label>주담대 금액</label><input type="text" data-k="loan" value="450,000,000"></div>
 <div><label>예상 금리 (%)</label><input type="number" step="0.01" data-k="rate" value="5"></div>
@@ -164,6 +164,8 @@ function save(){try{localStorage.setItem('adelium-plan',JSON.stringify(store))}c
 $('#bankBody').innerHTML=banks.map((b,i)=>`<tr><td><b>${b[0]}</b></td><td>${b[1]}</td><td><input class="rate" type="number" step="0.01" placeholder="예: 4.85" data-bank="${i}" value="${(store.rates||{})[i]||''}"></td><td class="n" id="bm${i}">-</td></tr>`).join('');
 $('#todoBody').innerHTML=todos.map((t,i)=>`<tr id="tr${i}"><td><input type="checkbox" data-todo="${i}" ${(store.todo||{})[i]?'checked':''}></td><td>${t[0]}</td><td>${t[1]}</td></tr>`).join('');
 
+(()=>{let it=null;try{it=JSON.parse(localStorage.getItem('adelium-interior')||'null')}catch(e){}
+ if(!it)return;[['int','intTotal'],['appl','applTotal']].forEach(([k,f])=>{if(it[f]==null)return;const el=document.querySelector(`[data-k="${k}"]`);el.value=Math.round(it[f]).toLocaleString('ko-KR');el.readOnly=true;el.style.background='#eef2f6';document.querySelector('#h_'+k).innerHTML='<a href="interior.html">인테리어 계획</a>에서 자동 반영';});})();
 function calc(){
  const sell=val('sell'),buy=val('buy'),area=val('area'),disc=val('disc')/100,interior=val('int'),appl=val('appl'),subs=val('sub'),loan=val('loan'),rate=val('rate')/100,hold=val('hold'),mi=val('mi'),inc1=val('inc1'),inc2=val('inc2'),milim=val('milim');
  const taxR=area<=85?0.033:0.035, tax=Math.round(buy*taxR), fee=Math.round(buy*0.005*disc*1.1), etc=1500000,stamp=75000,move=2500000;
