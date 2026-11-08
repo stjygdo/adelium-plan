@@ -343,6 +343,19 @@ function calc(){
  banks.forEach((_,i)=>{const r=num(document.querySelector(`[data-bank="${i}"]`).value)/100;$('#bm'+i).textContent=r?won(pmt(r,480,loan))+'원':'-'});
  todos.forEach((_,i)=>$('#tr'+i).classList.toggle('done',document.querySelector(`[data-todo="${i}"]`).checked));
 }
+// 금액 칸: 입력하는 동안 천 단위 쉼표를 바로 넣기 (커서 위치 유지)
+document.addEventListener('input',e=>{
+ const el=e.target;
+ if(e.isComposing||el.type!=='text'||el.inputMode!=='numeric')return;
+ const v=el.value,pos=el.selectionStart??v.length;
+ const before=v.slice(0,pos).replace(/[^0-9]/g,'').length;   // 커서 앞 숫자 개수
+ const digits=v.replace(/[^0-9]/g,'').replace(/^0+(?=\d)/,'');
+ const f=digits?Number(digits).toLocaleString('ko-KR'):'';
+ if(f===v)return;
+ el.value=f;
+ let n=0,i=0;while(i<f.length&&n<before){if(/\d/.test(f[i]))n++;i++}
+ el.setSelectionRange(i,i);
+},true);
 const INKEY='adelium-inputs';
 function getInputs(){const o={};document.querySelectorAll('[data-k]').forEach(el=>o[el.dataset.k]=el.value);return o}
 function setInputs(o){Object.entries(o||{}).forEach(([k,v])=>{const el=document.querySelector(`[data-k="${k}"]`);if(el&&!el.readOnly)el.value=v})}
