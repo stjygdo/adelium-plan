@@ -154,9 +154,9 @@ table.flow .note{display:block;font-size:12px;color:var(--muted)}
 
 <div class="kpis">
 <div class="kpi main"><div class="l" id="k_endl">모두 끝나고 남는 돈</div><div class="v" id="k_end">-</div><div class="s" id="k_tight">-</div></div>
-<div class="kpi"><div class="l">월 상환액 (40년)</div><div class="v" id="k_m40">-</div><div class="s">30년이면 <span id="k_m30">-</span></div></div>
+<div class="kpi"><div class="l">월 부담 (40년 + 공제회 이자)</div><div class="v" id="k_m40">-</div><div class="s" id="k_m40s">-</div></div>
 <div class="kpi"><div class="l">DSR (부부 합산, 40년)</div><div class="v" id="k_dsr">-</div><div class="s">본인 소득만이면 <span id="k_dsr1">-</span></div></div>
-<div class="kpi"><div class="l">10년 뒤 남은 대출 (40년)</div><div class="v" id="k_bal">-</div><div class="s">집 팔 때 갚을 돈</div></div>
+<div class="kpi"><div class="l">10년 뒤 남은 대출 (40년)</div><div class="v" id="k_bal">-</div><div class="s" id="k_bals">집 팔 때 갚을 돈</div></div>
 </div>
 
 <section id="inputs">
@@ -169,7 +169,9 @@ table.flow .note{display:block;font-size:12px;color:var(--muted)}
 <div><label>인테리어</label><input type="text" inputmode="numeric" data-k="int" value="0"><div class="hint" id="h_int"></div></div>
 <div><label>가전·가구</label><input type="text" inputmode="numeric" data-k="appl" value="0"><div class="hint" id="h_appl"></div></div>
 <div><label>청약통장 해지금</label><input type="text" inputmode="numeric" data-k="sub" value="0"><div class="hint">쓸 수 있는 돈에 더해집니다</div></div>
-<div><label>교직원공제회 대여</label><input type="text" inputmode="numeric" data-k="kkj" value="0"><div class="hint">자기담보 · 금리 4.95% · DSR 미반영 · 쓸 수 있는 돈에 더해집니다</div></div>
+<div><label>교직원공제회 대여</label><input type="text" inputmode="numeric" data-k="kkj" value="0"><div class="hint">자기담보 · DSR 미반영 · 쓸 수 있는 돈에 더해집니다</div></div>
+<div><label>공제회 금리 (%)</label><input type="number" step="0.01" data-k="kkjr" value="4.95"></div>
+<div><label>공제회 거치 기간 (년)</label><input type="number" step="1" data-k="kkjy" value="2"><div class="hint">이 기간에는 이자만 내고, 끝나면 원금을 갚습니다</div></div>
 <div><label>주담대 금액</label><input type="text" inputmode="numeric" data-k="loan" value="0"></div>
 <div><label>예상 금리 (%)</label><input type="number" step="0.01" data-k="rate" value="5"></div>
 <div><label>보유 기간 (년)</label><input type="number" step="1" data-k="hold" value="10"></div>
@@ -419,28 +421,29 @@ function updateFlow(){
  });
 })();
 function calc(){
- const sell=val('sell'),buy=val('buy'),area=val('area'),disc=val('disc')/100,interior=val('int'),appl=val('appl'),subs=val('sub'),kkj=val('kkj'),loan=val('loan'),rate=val('rate')/100,hold=val('hold'),mi=val('mi'),inc1=val('inc1'),inc2=val('inc2'),milim=val('milim');
+ const sell=val('sell'),buy=val('buy'),area=val('area'),disc=val('disc')/100,interior=val('int'),appl=val('appl'),subs=val('sub'),kkj=val('kkj'),kkjr=val('kkjr')/100,kkjy=val('kkjy'),loan=val('loan'),rate=val('rate')/100,hold=val('hold'),mi=val('mi'),inc1=val('inc1'),inc2=val('inc2'),milim=val('milim');
  const taxR=area<=85?0.033:0.035, tax=Math.round(buy*taxR), fee=Math.round(buy*0.005*disc*1.1), etc=1500000,stamp=75000,move=2500000;
  const need=buy+tax+fee+etc+stamp+move+interior+appl;
  const sfee=Math.round(sell*0.004*1.1), have=sell-sfee+loan+subs+kkj;
  const s1=need-have, s2=s1+mi;
  FX={sell,buy,loan,tax,fee,etc,stamp,move,interior,appl,subs,kkj,sfee};if($('#flowBody').children.length)updateFlow();
  const rows=[['sub','[필요한 돈]',''],['','매매가',buy],['',`취득세 등 <span class="note">${(taxR*100).toFixed(1)}% (전용 ${area}㎡)</span>`,tax],['',`매수 중개수수료 <span class="note">법정 0.5%의 ${Math.round(disc*100)}%, 부가세 포함</span>`,fee],['','법무사·채권·등기 <span class="note">추정</span>',etc],['','대출 인지세',stamp],['','이사비 <span class="note">추정</span>',move],['','인테리어',interior],['','가전',appl],['tot','필요한 돈 합계',need],
- ['sub','[쓸 수 있는 돈]',''],['','매도 대금',sell],['','매도 중개수수료 <span class="note">0.4%, 부가세 포함</span>',-sfee],['','주담대',loan],['','청약통장 해지금',subs],['',`교직원공제회 대여 <span class="note">금리 4.95% · 월 이자 약 ${won(kkj*0.0495/12)}원 · DSR 미반영</span>`,kkj],['tot','쓸 수 있는 돈 합계',have],
+ ['sub','[쓸 수 있는 돈]',''],['','매도 대금',sell],['','매도 중개수수료 <span class="note">0.4%, 부가세 포함</span>',-sfee],['','주담대',loan],['','청약통장 해지금',subs],['',`교직원공제회 대여 <span class="note">금리 ${(kkjr*100).toFixed(2)}% · ${kkjy}년 거치 · 월 이자 약 ${won(kkj*kkjr/12)}원 · ${kkjy}년 뒤 원금 ${man(kkj)} 상환 · DSR 미반영</span>`,kkj],['tot','쓸 수 있는 돈 합계',have],
  ['sub','[부족액]',''],['tot',`부족액 <span class="note">${s1>0?'약 '+man(s1)+' 모자람':'약 '+man(-s1)+' 남음'} · 지금 통장 잔액은 빼고 계산 (최종 잔액은 돈 흐름표 참고)</span>`,s1],...(mi>0?[['tot',`부족액 (마이너스통장 정리 포함) <span class="note">${s2>0?'약 '+man(s2)+' 모자람':'약 '+man(-s2)+' 남음'}</span>`,s2]]:[])];
  $('#moneyBody').innerHTML=rows.map(r=>`<tr class="${r[0]}"><td>${r[1]}</td><td class="n">${r[2]===''?'':won(r[2])}</td></tr>`).join('');
 
  const miY=milim/5+milim*0.06, k=hold*12;
- const L=[360,480].map(n=>{const m=pmt(rate,n,loan),b=bal(rate,k,m,loan),y=m*12;return{n,m,fi:loan*rate/12,fp:m-loan*rate/12,y,paid:m*k,b,pr:loan-b,int:m*k-(loan-b),ti:m*n-loan,tt:m*n,d1:y/inc1,d1m:(y+miY)/inc1,d2:y/inc2,d2m:(y+miY)/inc2}});
+ const kkM=kkj*kkjr/12,kkMon=Math.min(k,kkjy*12);
+ const L=[360,480].map(n=>{const m=pmt(rate,n,loan),b=bal(rate,k,m,loan),y=m*12;return{n,m,kk:kkM,mt:m+kkM,kki:kkM*kkMon,kkp:kkj,fi:loan*rate/12,fp:m-loan*rate/12,y,paid:m*k,b,pr:loan-b,int:m*k-(loan-b),ti:m*n-loan,tt:m*n,d1:y/inc1,d1m:(y+miY)/inc1,d2:y/inc2,d2m:(y+miY)/inc2}});
  const a=L[0],c=L[1];
  const badge=v=>isFinite(v)?`<br><span class="badge ${v<=0.4?'ok':'no'}">${v<=0.4?'가능':'초과'}</span>`:'';
- const lr=[['월 상환액','m','w',1],['첫 달 이자','fi','w'],['첫 달 원금','fp','w'],['연 상환액','y','w'],[`${hold}년 동안 낸 돈`,'paid','w'],[`${hold}년 뒤 남은 대출`,'b','w',1],[`${hold}년 동안 갚은 원금`,'pr','w'],[`${hold}년 동안 낸 이자`,'int','w'],['끝까지 갚을 때 총이자','ti','w'],['끝까지 갚을 때 총상환액','tt','w'],
+ const lr=[['월 상환액 (주담대)','m','w',1],[`공제회 이자 (월, ${kkjy}년 거치 동안)`,'kk','w'],['월 부담 합계 (거치 기간)','mt','w',1],[`공제회 이자 합계 (${kkjy}년)`,'kki','w'],[`${kkjy}년 뒤 갚을 공제회 원금`,'kkp','w'],['첫 달 이자','fi','w'],['첫 달 원금','fp','w'],['연 상환액','y','w'],[`${hold}년 동안 낸 돈`,'paid','w'],[`${hold}년 뒤 남은 대출`,'b','w',1],[`${hold}년 동안 갚은 원금`,'pr','w'],[`${hold}년 동안 낸 이자`,'int','w'],['끝까지 갚을 때 총이자','ti','w'],['끝까지 갚을 때 총상환액','tt','w'],
  ['DSR (본인 소득, 마통 해지)','d1','p'],['DSR (본인 소득, 마통 유지)','d1m','p'],['DSR (부부 합산, 마통 해지)','d2','p'],['DSR (부부 합산, 마통 유지)','d2m','p']];
  $('#loanBody').innerHTML=lr.map(([t,key,f,hl])=>{const x=a[key],y=c[key];const fm=f==='w'?won:pct;const d=f==='w'?(x-y>0?'+':'')+won(x-y):(isFinite(x-y)?((x-y)*100>0?'+':'')+((x-y)*100).toFixed(1)+'%p':'-');return`<tr${hl?' class="tot"':''}><td>${t}</td><td class="n">${fm(x)}${f==='p'?badge(x):''}</td><td class="n">${fm(y)}${f==='p'?badge(y):''}</td><td class="n">${d}</td></tr>`}).join('');
 
- $('#k_m40').textContent=won(c.m)+'원';$('#k_m30').textContent=won(a.m)+'원';
+ $('#k_m40').textContent=won(c.mt)+'원';$('#k_m40s').textContent=`주담대 ${won(c.m)} + 공제회 이자 ${won(kkM)} · ${kkjy}년 뒤엔 ${won(c.m)}원 (30년이면 주담대 ${won(a.m)})`;
  $('#k_dsr').textContent=pct(c.d2);$('#k_dsr1').textContent=pct(c.d1);
- $('#k_bal').textContent=man(c.b);
+ $('#k_bal').textContent=man(c.b);$('#k_bals').textContent=kkj?`집 팔 때 갚을 돈 · 공제회 ${man(kkj)}은 ${kkjy}년 뒤 따로 상환`:'집 팔 때 갚을 돈';
  banks.forEach((_,i)=>{const r=num(document.querySelector(`[data-bank="${i}"]`).value)/100;$('#bm'+i).textContent=r?won(pmt(r,480,loan))+'원':'-'});
  todos.forEach((_,i)=>$('#tr'+i).classList.toggle('done',document.querySelector(`[data-todo="${i}"]`).checked));
 }
