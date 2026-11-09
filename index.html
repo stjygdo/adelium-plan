@@ -153,7 +153,7 @@ table.flow .note{display:block;font-size:12px;color:var(--muted)}
 <main>
 
 <div class="kpis">
-<div class="kpi main"><div class="l" id="k_short2l">부족액 (마이너스통장 정리 포함)</div><div class="v" id="k_short2">-</div><div class="s">마이너스통장 빼면 <span id="k_short1">-</span></div></div>
+<div class="kpi main"><div class="l" id="k_endl">모두 끝나고 남는 돈</div><div class="v" id="k_end">-</div><div class="s" id="k_tight">-</div></div>
 <div class="kpi"><div class="l">월 상환액 (40년)</div><div class="v" id="k_m40">-</div><div class="s">30년이면 <span id="k_m30">-</span></div></div>
 <div class="kpi"><div class="l">DSR (부부 합산, 40년)</div><div class="v" id="k_dsr">-</div><div class="s">본인 소득만이면 <span id="k_dsr1">-</span></div></div>
 <div class="kpi"><div class="l">10년 뒤 남은 대출 (40년)</div><div class="v" id="k_bal">-</div><div class="s">집 팔 때 갚을 돈</div></div>
@@ -397,16 +397,18 @@ function updateFlow(){
   bal+=a.i-a.o;b.textContent=won(bal);b.classList.toggle('neg',bal<0);
   if(bal<min){min=bal;minRow=r;}
  });
+ $('#k_endl').textContent=bal<0?'모두 끝나고 모자라는 돈':'모두 끝나고 남는 돈';$('#k_end').textContent=man(Math.abs(bal));$('#k_end').style.color=bal<0?'var(--warn)':'';
+ $('#k_tight').textContent=minRow?`가장 빠듯한 날: ${minRow.d?fmtD(minRow.d)+' ':''}${minRow.n} ${min<0?man(-min)+' 부족':man(min)}`:'돈 흐름표 기준';
  const box=$('#flowSum');
  if(minRow&&min<0){box.className='flowsum bad';box.innerHTML=`⚠ <b>${minRow.d?fmtD(minRow.d)+' ':''}${minRow.n}</b> 때 잔액이 가장 낮아 <b>${man(-min)}</b> 모자랍니다. · 마지막 잔액 ${man(bal)}`;}
  else{box.className='flowsum';box.innerHTML=`✅ 모자라는 날이 없습니다. · 가장 낮을 때 ${man(isFinite(min)?min:bal)} · 마지막 잔액 ${man(bal)}`;}
 }
 (()=>{const P0=document.getElementById('p0');
  const onFlow=e=>{const el=e.target;
-  if(el.id==='fStart'){store.fStart=num(el.value);save();return;}
+  if(el.id==='fStart'){store.fStart=num(el.value);save();return updateFlow();}
   if(el.dataset.fl==null)return;const r=store.flow[+el.dataset.fl],f=el.dataset.ff;
   if(f==='on')r.on=el.checked;else if(f==='i'||f==='o')r[f]=el.value.trim()===''?'':num(el.value);else r[f]=el.value;
-  save();};
+  save();updateFlow();};
  ['input','change'].forEach(ev=>P0.addEventListener(ev,onFlow,true));
  P0.addEventListener('click',e=>{const d=e.target.dataset;
   if(d.fmv!=null){const k=+d.fmv,j=k+(+d.dir);if(j<0||j>=store.flow.length)return;[store.flow[k],store.flow[j]]=[store.flow[j],store.flow[k]];save();renderFlow();document.querySelector(`[data-fmv="${j}"][data-dir="${d.dir}"]`)?.focus();return;}
@@ -425,7 +427,7 @@ function calc(){
  FX={sell,buy,loan,tax,fee,etc,stamp,move,interior,appl,subs,kkj,sfee};if($('#flowBody').children.length)updateFlow();
  const rows=[['sub','[필요한 돈]',''],['','매매가',buy],['',`취득세 등 <span class="note">${(taxR*100).toFixed(1)}% (전용 ${area}㎡)</span>`,tax],['',`매수 중개수수료 <span class="note">법정 0.5%의 ${Math.round(disc*100)}%, 부가세 포함</span>`,fee],['','법무사·채권·등기 <span class="note">추정</span>',etc],['','대출 인지세',stamp],['','이사비 <span class="note">추정</span>',move],['','인테리어',interior],['','가전',appl],['tot','필요한 돈 합계',need],
  ['sub','[쓸 수 있는 돈]',''],['','매도 대금',sell],['','매도 중개수수료 <span class="note">0.4%, 부가세 포함</span>',-sfee],['','주담대',loan],['','청약통장 해지금',subs],['',`교직원공제회 대여 <span class="note">금리 4.95% · 월 이자 약 ${won(kkj*0.0495/12)}원 · DSR 미반영</span>`,kkj],['tot','쓸 수 있는 돈 합계',have],
- ['sub','[부족액]',''],['tot',`부족액 (기본) <span class="note">${s1>0?'약 '+man(s1)+' 모자람':'약 '+man(-s1)+' 남음'}</span>`,s1],['tot',`부족액 (마이너스통장 정리 포함) <span class="note">${s2>0?'약 '+man(s2)+' 모자람':'약 '+man(-s2)+' 남음'}</span>`,s2]];
+ ['sub','[부족액]',''],['tot',`부족액 <span class="note">${s1>0?'약 '+man(s1)+' 모자람':'약 '+man(-s1)+' 남음'} · 지금 통장 잔액은 빼고 계산 (최종 잔액은 돈 흐름표 참고)</span>`,s1],...(mi>0?[['tot',`부족액 (마이너스통장 정리 포함) <span class="note">${s2>0?'약 '+man(s2)+' 모자람':'약 '+man(-s2)+' 남음'}</span>`,s2]]:[])];
  $('#moneyBody').innerHTML=rows.map(r=>`<tr class="${r[0]}"><td>${r[1]}</td><td class="n">${r[2]===''?'':won(r[2])}</td></tr>`).join('');
 
  const miY=milim/5+milim*0.06, k=hold*12;
@@ -436,7 +438,6 @@ function calc(){
  ['DSR (본인 소득, 마통 해지)','d1','p'],['DSR (본인 소득, 마통 유지)','d1m','p'],['DSR (부부 합산, 마통 해지)','d2','p'],['DSR (부부 합산, 마통 유지)','d2m','p']];
  $('#loanBody').innerHTML=lr.map(([t,key,f,hl])=>{const x=a[key],y=c[key];const fm=f==='w'?won:pct;const d=f==='w'?(x-y>0?'+':'')+won(x-y):(isFinite(x-y)?((x-y)*100>0?'+':'')+((x-y)*100).toFixed(1)+'%p':'-');return`<tr${hl?' class="tot"':''}><td>${t}</td><td class="n">${fm(x)}${f==='p'?badge(x):''}</td><td class="n">${fm(y)}${f==='p'?badge(y):''}</td><td class="n">${d}</td></tr>`}).join('');
 
- $('#k_short2l').textContent=(s2>0?'부족액':'남는 돈')+' (마이너스통장 정리 포함)';$('#k_short2').textContent=man(Math.abs(s2));$('#k_short1').textContent=(s1>0?'부족 ':'남음 ')+man(Math.abs(s1));
  $('#k_m40').textContent=won(c.m)+'원';$('#k_m30').textContent=won(a.m)+'원';
  $('#k_dsr').textContent=pct(c.d2);$('#k_dsr1').textContent=pct(c.d1);
  $('#k_bal').textContent=man(c.b);
