@@ -149,7 +149,7 @@ table.flow .note{display:block;font-size:12px;color:var(--muted)}
 <main>
 
 <div class="kpis">
-<div class="kpi main"><div class="l">부족액 (마이너스통장 정리 포함)</div><div class="v" id="k_short2">-</div><div class="s">기본 부족액 <span id="k_short1">-</span></div></div>
+<div class="kpi main"><div class="l" id="k_short2l">부족액 (마이너스통장 정리 포함)</div><div class="v" id="k_short2">-</div><div class="s">마이너스통장 빼면 <span id="k_short1">-</span></div></div>
 <div class="kpi"><div class="l">월 상환액 (40년)</div><div class="v" id="k_m40">-</div><div class="s">30년이면 <span id="k_m30">-</span></div></div>
 <div class="kpi"><div class="l">DSR (부부 합산, 40년)</div><div class="v" id="k_dsr">-</div><div class="s">본인 소득만이면 <span id="k_dsr1">-</span></div></div>
 <div class="kpi"><div class="l">10년 뒤 남은 대출 (40년)</div><div class="v" id="k_bal">-</div><div class="s">집 팔 때 갚을 돈</div></div>
@@ -165,6 +165,7 @@ table.flow .note{display:block;font-size:12px;color:var(--muted)}
 <div><label>인테리어</label><input type="text" inputmode="numeric" data-k="int" value="0"><div class="hint" id="h_int"></div></div>
 <div><label>가전·가구</label><input type="text" inputmode="numeric" data-k="appl" value="0"><div class="hint" id="h_appl"></div></div>
 <div><label>청약통장 해지금</label><input type="text" inputmode="numeric" data-k="sub" value="0"><div class="hint">쓸 수 있는 돈에 더해집니다</div></div>
+<div><label>교직원공제회 대여</label><input type="text" inputmode="numeric" data-k="kkj" value="0"><div class="hint">자기담보 · 금리 4.95% · DSR 미반영 · 쓸 수 있는 돈에 더해집니다</div></div>
 <div><label>주담대 금액</label><input type="text" inputmode="numeric" data-k="loan" value="0"></div>
 <div><label>예상 금리 (%)</label><input type="number" step="0.01" data-k="rate" value="5"></div>
 <div><label>보유 기간 (년)</label><input type="number" step="1" data-k="hold" value="10"></div>
@@ -341,10 +342,10 @@ function applyInterior(intT){[['int',intT]].forEach(([k,v])=>{const el=document.
 
 // ===== 날짜별 돈 흐름 =====
 const FLOW_DEF=[
- {on:false,d:'2026-11-07',n:'매도 계약금 (농성 SK뷰)',i:56000000,o:'',m:'이미 받음 · 지금 잔액에 안 들어 있으면 체크'},
- {on:true,d:'',n:'교직원공제회 대여',i:30000000,o:'',m:'매수 계약하는 날 받음 · 날짜 미정'},
+ {on:false,d:'2026-11-07',n:'매도 계약금 (농성 SK뷰)',i:'',o:'',m:'이미 받음 · 지금 잔액에 안 들어 있으면 체크'},
+ {on:true,d:'',n:'교직원공제회 대여',auto:'kkj',m:'매수 계약하는 날 받음 · 날짜 미정'},
  {on:true,d:'',n:'청약통장 해지금',auto:'subs',m:'매수 계약금에 보태려고 계약 전에 해지'},
- {on:true,d:'',n:'매수 계약금 (아델리움 3차)',i:'',o:93000000,m:'계약일 미정 · 보통 10%'},
+ {on:true,d:'',n:'매수 계약금 (아델리움 3차)',i:'',o:'',m:'계약일 미정 · 보통 10%'},
  {on:true,d:'2027-01-28',n:'매도 잔금',auto:'sellBal'},
  {on:true,d:'',n:'매도 중개수수료',auto:'sfee'},
  {on:true,d:'',n:'주담대 실행',auto:'loan',m:'매수 잔금일 미정'},
@@ -354,9 +355,12 @@ const FLOW_DEF=[
  {on:true,d:'',n:'이사비',auto:'move'},
  {on:true,d:'',n:'인테리어',auto:'interior',m:'지급 방식 미정 · 나눠 내면 줄 추가 후 이 줄 금액 조정'},
  {on:true,d:'',n:'가전·가구',auto:'appl'}];
-const AUTO_IO={sellBal:'i',subs:'i',loan:'i',sfee:'o',buyBal:'o',regi:'o',fee:'o',move:'o',interior:'o',appl:'o'};
+const AUTO_IO={sellBal:'i',subs:'i',kkj:'i',loan:'i',sfee:'o',buyBal:'o',regi:'o',fee:'o',move:'o',interior:'o',appl:'o'};
 if(!Array.isArray(store.flow))store.flow=JSON.parse(JSON.stringify(FLOW_DEF));
-if(store.fStart==null)store.fStart=43000000;
+if(store.fStart==null)store.fStart=0;
+function migrateKkj(){const r=(store.flow||[]).find(x=>!x.auto&&/공제회/.test(x.n||''));if(!r)return;
+ const el=document.querySelector('[data-k="kkj"]');if(el&&!num(el.value)&&num(r.i)){el.value=won(num(r.i));saveInputs();}
+ r.auto='kkj';delete r.i;delete r.o;save();}
 let FX={};   // calc에서 채우는 자동 금액 재료
 const fmtD=d=>{if(!d)return'';const[y,m,dd]=d.split('-');return `${+m}/${+dd}`};
 function flowOrder(){let last='';return store.flow.map((r,k)=>{if(r.d)last=r.d;return{k,ed:last}}).sort((a,b)=>a.ed<b.ed?-1:a.ed>b.ed?1:a.k-b.k).map(x=>x.k)}
@@ -406,15 +410,15 @@ function updateFlow(){
  });
 })();
 function calc(){
- const sell=val('sell'),buy=val('buy'),area=val('area'),disc=val('disc')/100,interior=val('int'),appl=val('appl'),subs=val('sub'),loan=val('loan'),rate=val('rate')/100,hold=val('hold'),mi=val('mi'),inc1=val('inc1'),inc2=val('inc2'),milim=val('milim');
+ const sell=val('sell'),buy=val('buy'),area=val('area'),disc=val('disc')/100,interior=val('int'),appl=val('appl'),subs=val('sub'),kkj=val('kkj'),loan=val('loan'),rate=val('rate')/100,hold=val('hold'),mi=val('mi'),inc1=val('inc1'),inc2=val('inc2'),milim=val('milim');
  const taxR=area<=85?0.033:0.035, tax=Math.round(buy*taxR), fee=Math.round(buy*0.005*disc*1.1), etc=1500000,stamp=75000,move=2500000;
  const need=buy+tax+fee+etc+stamp+move+interior+appl;
- const sfee=Math.round(sell*0.004*1.1), have=sell-sfee+loan+subs;
+ const sfee=Math.round(sell*0.004*1.1), have=sell-sfee+loan+subs+kkj;
  const s1=need-have, s2=s1+mi;
- FX={sell,buy,loan,tax,fee,etc,stamp,move,interior,appl,subs,sfee};if($('#flowBody').children.length)updateFlow();
+ FX={sell,buy,loan,tax,fee,etc,stamp,move,interior,appl,subs,kkj,sfee};if($('#flowBody').children.length)updateFlow();
  const rows=[['sub','[필요한 돈]',''],['','매매가',buy],['',`취득세 등 <span class="note">${(taxR*100).toFixed(1)}% (전용 ${area}㎡)</span>`,tax],['',`매수 중개수수료 <span class="note">법정 0.5%의 ${Math.round(disc*100)}%, 부가세 포함</span>`,fee],['','법무사·채권·등기 <span class="note">추정</span>',etc],['','대출 인지세',stamp],['','이사비 <span class="note">추정</span>',move],['','인테리어',interior],['','가전',appl],['tot','필요한 돈 합계',need],
- ['sub','[쓸 수 있는 돈]',''],['','매도 대금',sell],['','매도 중개수수료 <span class="note">0.4%, 부가세 포함</span>',-sfee],['','주담대',loan],['','청약통장 해지금',subs],['tot','쓸 수 있는 돈 합계',have],
- ['sub','[부족액]',''],['tot',`부족액 (기본) <span class="note">약 ${man(s1)}</span>`,s1],['tot',`부족액 (마이너스통장 정리 포함) <span class="note">약 ${man(s2)} → 교직원공제회 자기담보 대여로 충당 검토</span>`,s2]];
+ ['sub','[쓸 수 있는 돈]',''],['','매도 대금',sell],['','매도 중개수수료 <span class="note">0.4%, 부가세 포함</span>',-sfee],['','주담대',loan],['','청약통장 해지금',subs],['',`교직원공제회 대여 <span class="note">금리 4.95% · 월 이자 약 ${won(kkj*0.0495/12)}원 · DSR 미반영</span>`,kkj],['tot','쓸 수 있는 돈 합계',have],
+ ['sub','[부족액]',''],['tot',`부족액 (기본) <span class="note">${s1>0?'약 '+man(s1)+' 모자람':'약 '+man(-s1)+' 남음'}</span>`,s1],['tot',`부족액 (마이너스통장 정리 포함) <span class="note">${s2>0?'약 '+man(s2)+' 모자람':'약 '+man(-s2)+' 남음'}</span>`,s2]];
  $('#moneyBody').innerHTML=rows.map(r=>`<tr class="${r[0]}"><td>${r[1]}</td><td class="n">${r[2]===''?'':won(r[2])}</td></tr>`).join('');
 
  const miY=milim/5+milim*0.06, k=hold*12;
@@ -425,7 +429,7 @@ function calc(){
  ['DSR (본인 소득, 마통 해지)','d1','p'],['DSR (본인 소득, 마통 유지)','d1m','p'],['DSR (부부 합산, 마통 해지)','d2','p'],['DSR (부부 합산, 마통 유지)','d2m','p']];
  $('#loanBody').innerHTML=lr.map(([t,key,f,hl])=>{const x=a[key],y=c[key];const fm=f==='w'?won:pct;const d=f==='w'?(x-y>0?'+':'')+won(x-y):(isFinite(x-y)?((x-y)*100>0?'+':'')+((x-y)*100).toFixed(1)+'%p':'-');return`<tr${hl?' class="tot"':''}><td>${t}</td><td class="n">${fm(x)}${f==='p'?badge(x):''}</td><td class="n">${fm(y)}${f==='p'?badge(y):''}</td><td class="n">${d}</td></tr>`}).join('');
 
- $('#k_short1').textContent=man(s1);$('#k_short2').textContent=man(s2);
+ $('#k_short2l').textContent=(s2>0?'부족액':'남는 돈')+' (마이너스통장 정리 포함)';$('#k_short2').textContent=man(Math.abs(s2));$('#k_short1').textContent=(s1>0?'부족 ':'남음 ')+man(Math.abs(s1));
  $('#k_m40').textContent=won(c.m)+'원';$('#k_m30').textContent=won(a.m)+'원';
  $('#k_dsr').textContent=pct(c.d2);$('#k_dsr1').textContent=pct(c.d1);
  $('#k_bal').textContent=man(c.b);
@@ -458,13 +462,13 @@ document.querySelectorAll('[data-k]').forEach(el=>{
 ['change','keyup','compositionend'].forEach(ev=>document.getElementById('p0').addEventListener(ev,e=>{if(e.target.matches('input'))calc()}));
 window.mainState={
  get:()=>({inputs:getInputs(),rates:store.rates||{},todo:store.todo||{},flow:store.flow,fStart:store.fStart}),
- set:o=>{if(!o)return;setInputs(o.inputs);saveInputs();store.rates=o.rates||{};store.todo=o.todo||{};if(Array.isArray(o.flow))store.flow=o.flow;if(o.fStart!=null)store.fStart=o.fStart;save();renderFlow();
+ set:o=>{if(!o)return;setInputs(o.inputs);saveInputs();store.rates=o.rates||{};store.todo=o.todo||{};if(Array.isArray(o.flow))store.flow=o.flow;if(o.fStart!=null)store.fStart=o.fStart;save();migrateKkj();renderFlow();
   document.querySelectorAll('[data-bank]').forEach(el=>el.value=store.rates[el.dataset.bank]||'');
   document.querySelectorAll('[data-todo]').forEach(el=>el.checked=!!store.todo[el.dataset.todo]);calc();}
 };
 document.querySelectorAll('[data-bank]').forEach(el=>el.addEventListener('input',()=>{store.rates=store.rates||{};store.rates[el.dataset.bank]=el.value;save();calc()}));
 document.querySelectorAll('[data-todo]').forEach(el=>el.addEventListener('change',()=>{store.todo=store.todo||{};store.todo[el.dataset.todo]=el.checked;save();calc()}));
-calc();
+migrateKkj();calc();
 renderFlow();
 </script>
 <script>(()=>{
@@ -604,6 +608,8 @@ async function load(){
       const d=snap.data();
       window.interiorState.set(d.interior);   // 인테리어 먼저 (합계가 자금 계획 칸에 반영됨)
       window.mainState.set(d.main);
+      const st=window.mainState.get(),filled=st.fStart>0||st.flow.some(r=>!r.auto&&(Number(r.i)||Number(r.o)));
+      if(!(d.main&&d.main.flow)&&filled){loaded=true;return save();}
       show('☁️ 마지막 저장 '+(d.updatedAt?hhmm(d.updatedAt.toDate()):'')+' · 바꾸면 자동 저장');
       loaded=true;dirty=false;
     }else{   // 처음 쓰는 열쇠: 이 기기에 입력된 값이 있으면 서버에 올려 둠 (빈 값으로 덮어쓰지 않게)
