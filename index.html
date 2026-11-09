@@ -119,7 +119,11 @@ a{color:#ffe29a}
 #p0 nav a:first-child,#p1 nav a:first-child{margin-left:auto}
 #p0 nav a:last-child,#p1 nav a:last-child{margin-right:auto}
 input[type=date]{width:100%;padding:7px 8px;border:1px solid rgba(255,214,120,.42);border-radius:8px;font:inherit;font-size:14px;background:var(--hl);color:#fff6dc;color-scheme:dark}
-table.flow{min-width:640px}
+table.flow{min-width:700px}
+.mvs{white-space:nowrap}
+.mv{border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.05);color:#ffe29a;border-radius:6px;width:24px;height:26px;padding:0;font-size:11px;cursor:pointer;margin-right:2px}
+.mv:hover:not(:disabled){background:rgba(245,199,107,.2)}
+.mv:disabled{opacity:.25;cursor:default}
 table.flow td{vertical-align:middle;padding:6px 6px}
 table.flow input[type=text]{padding:7px 8px}
 table.flow tr.off td{opacity:.45}
@@ -190,11 +194,11 @@ table.flow .note{display:block;font-size:12px;color:var(--muted)}
 <div class="inputs"><div><label>지금 통장 잔액 (시작)</label><input type="text" inputmode="numeric" class="m" id="fStart"><div class="hint">2026년 11월 9일 기준</div></div></div>
 <div id="flowSum" class="flowsum"></div>
 <div class="tbl"><table class="flow">
-<thead><tr><th style="width:44px">반영</th><th style="width:150px">날짜</th><th>내용</th><th class="n">들어옴</th><th class="n">나감</th><th class="n">잔액</th><th style="width:36px"></th></tr></thead>
+<thead><tr><th style="width:56px">순서</th><th style="width:44px">반영</th><th style="width:150px">날짜</th><th>내용</th><th class="n">들어옴</th><th class="n">나감</th><th class="n">잔액</th><th style="width:36px"></th></tr></thead>
 <tbody id="flowBody"></tbody>
 </table></div>
-<button class="add" id="flowAdd" type="button">+ 줄 추가</button>
-<p class="small">※ <b>자동</b> 금액은 위 입력값으로 계산됩니다. 날짜를 비워 두면 바로 위 줄과 같은 날로 보고 계산합니다. 이름에 '매수 중도금'·'매도 중도금'처럼 쓰면 잔금에서 자동으로 빠집니다. 체크를 풀면 계산에서 뺍니다.</p>
+<button class="add" id="flowAdd" type="button">+ 줄 추가</button> <button class="add" id="flowSort" type="button">📅 날짜순으로 정렬</button>
+<p class="small">※ <b>자동</b> 금액은 위 입력값으로 계산됩니다. ▲▼로 줄 순서를 바꿀 수 있고, 잔액은 위에서부터 순서대로 계산됩니다. '날짜순으로 정렬'을 누르면 날짜 순서로 다시 놓습니다(빈 날짜는 바로 위 줄과 같은 날로 봄). 이름에 '매수 중도금'·'매도 중도금'처럼 쓰면 잔금에서 자동으로 빠집니다. 체크를 풀면 계산에서 뺍니다.</p>
 </section>
 
 <section id="loan">
@@ -363,7 +367,8 @@ function migrateKkj(){const r=(store.flow||[]).find(x=>!x.auto&&/공제회/.test
  r.auto='kkj';delete r.i;delete r.o;save();}
 let FX={};   // calc에서 채우는 자동 금액 재료
 const fmtD=d=>{if(!d)return'';const[y,m,dd]=d.split('-');return `${+m}/${+dd}`};
-function flowOrder(){let last='';return store.flow.map((r,k)=>{if(r.d)last=r.d;return{k,ed:last}}).sort((a,b)=>a.ed<b.ed?-1:a.ed>b.ed?1:a.k-b.k).map(x=>x.k)}
+function flowOrder(){return store.flow.map((_,k)=>k)}
+function flowSortByDate(){let last='';store.flow=store.flow.map((r,k)=>{if(r.d)last=r.d;return{r,k,ed:last}}).sort((a,b)=>a.ed<b.ed?-1:a.ed>b.ed?1:a.k-b.k).map(x=>x.r)}
 function flowAmt(r){
  if(!r.auto)return{i:num(r.i),o:num(r.o)};
  const sum=(re,f)=>store.flow.filter(x=>!x.auto&&re.test(x.n)).reduce((s,x)=>s+num(x[f]),0);
@@ -375,7 +380,7 @@ function renderFlow(){
  const W=v=>v===''||v==null?'':won(num(v));
  $('#flowBody').innerHTML=flowOrder().map(k=>{const r=store.flow[k];
   const cell=f=>r.auto?`<td class="n" data-fv="${k}${f}"></td>`:`<td><input type="text" inputmode="numeric" class="m" data-fl="${k}" data-ff="${f}" value="${W(r[f])}" placeholder="0"></td>`;
-  return `<tr data-row="${k}"><td><input type="checkbox" class="chk" data-fl="${k}" data-ff="on" ${r.on?'checked':''}></td>
+  return `<tr data-row="${k}"><td class="mvs"><button class="mv" type="button" data-fmv="${k}" data-dir="-1" title="위로" ${k===0?'disabled':''}>▲</button><button class="mv" type="button" data-fmv="${k}" data-dir="1" title="아래로" ${k===store.flow.length-1?'disabled':''}>▼</button></td><td><input type="checkbox" class="chk" data-fl="${k}" data-ff="on" ${r.on?'checked':''}></td>
   <td><input type="date" data-fl="${k}" data-ff="d" value="${r.d||''}"></td>
   <td>${r.auto?'<span class="auto">자동</span>':''}<input type="text" data-fl="${k}" data-ff="n" value="${String(r.n||'').replace(/"/g,'&quot;')}" placeholder="내용" style="${r.auto?'width:calc(100% - 44px)':''}">${r.m?`<span class="note">${r.m}</span>`:''}</td>
   ${cell('i')}${cell('o')}<td class="n" data-fb="${k}">-</td>
@@ -401,9 +406,11 @@ function updateFlow(){
   if(el.id==='fStart'){store.fStart=num(el.value);save();return;}
   if(el.dataset.fl==null)return;const r=store.flow[+el.dataset.fl],f=el.dataset.ff;
   if(f==='on')r.on=el.checked;else if(f==='i'||f==='o')r[f]=el.value.trim()===''?'':num(el.value);else r[f]=el.value;
-  save();if(f==='d'&&e.type==='change'){renderFlow();}};
+  save();};
  ['input','change'].forEach(ev=>P0.addEventListener(ev,onFlow,true));
  P0.addEventListener('click',e=>{const d=e.target.dataset;
+  if(d.fmv!=null){const k=+d.fmv,j=k+(+d.dir);if(j<0||j>=store.flow.length)return;[store.flow[k],store.flow[j]]=[store.flow[j],store.flow[k]];save();renderFlow();document.querySelector(`[data-fmv="${j}"][data-dir="${d.dir}"]`)?.focus();return;}
+  if(e.target.id==='flowSort'){flowSortByDate();save();renderFlow();return;}
   if(e.target.id==='flowAdd'){store.flow.push({on:true,d:'',n:'',i:'',o:''});save();renderFlow();const ns=document.querySelectorAll('#flowBody [data-ff="n"]');ns[ns.length-1]?.focus();}
   if(d.fdel!=null){const r=store.flow[+d.fdel];if((r.n||r.i||r.o)&&!d.armed){e.target.dataset.armed='1';e.target.textContent='삭제?';setTimeout(()=>{if(e.target.isConnected){delete e.target.dataset.armed;e.target.textContent='×'}},2500);return;}
    store.flow.splice(+d.fdel,1);save();renderFlow();calc();}
@@ -634,7 +641,7 @@ btn.addEventListener('click',()=>{if(!ref)return;if(!loaded)load();else if(dirty
 const sw=document.getElementById('sw');
 sw.addEventListener('input',schedule);
 sw.addEventListener('change',schedule);
-sw.addEventListener('click',e=>{if(e.target.closest('.add,.del'))setTimeout(schedule,0)});
+sw.addEventListener('click',e=>{if(e.target.closest('.add,.del,.mv'))setTimeout(schedule,0)});
 load();
 </script>
 </body>
