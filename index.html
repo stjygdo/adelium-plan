@@ -164,7 +164,7 @@ table.flow .note{display:block;font-size:12px;color:var(--muted)}
 <div class="inputs">
 <div><label>매도가 (농성 SK뷰)</label><input type="text" inputmode="numeric" data-k="sell" value="0"></div>
 <div><label>매수가 (아델리움 3차)</label><input type="text" inputmode="numeric" data-k="buy" value="0"></div>
-<div><label>전용면적 (㎡)</label><input type="number" step="0.01" data-k="area" value="84.81"><div class="hint">85㎡ 초과면 농어촌특별세 0.2% 추가</div></div>
+<div><label>전용면적 (㎡)</label><input type="number" step="0.01" data-k="area" value="84.77"><div class="hint">85㎡ 초과면 농어촌특별세 0.2% 추가</div></div>
 <div><label>중개수수료 할인 적용률 (%)</label><input type="number" step="1" data-k="disc" value="30"><div class="hint">법정 상한 수수료의 몇 %를 낼지 (9억 미만 0.4%, 9억 이상 0.5%)</div></div>
 <div><label>인테리어</label><input type="text" inputmode="numeric" data-k="int" value="0"><div class="hint" id="h_int"></div></div>
 <div><label>가전·가구</label><input type="text" inputmode="numeric" data-k="appl" value="0"><div class="hint" id="h_appl"></div></div>
@@ -351,7 +351,8 @@ const FLOW_DEF=[
  {on:false,d:'2026-11-07',n:'매도 계약금 (농성 SK뷰)',i:'',o:'',m:'이미 받음 · 지금 잔액에 안 들어 있으면 체크'},
  {on:true,d:'',n:'교직원공제회 대여',auto:'kkj',m:'매수 계약하는 날 받음 · 날짜 미정'},
  {on:true,d:'',n:'청약통장 해지금',auto:'subs',m:'매수 계약금에 보태려고 계약 전에 해지'},
- {on:true,d:'',n:'매수 계약금 (아델리움 3차)',i:'',o:'',m:'계약일 미정 · 보통 10%'},
+ {on:true,d:'',n:'매수 가계약금 (아델리움 3차)',i:'',o:10000000,m:'계약금 총 8,000만 원에 포함'},
+ {on:true,d:'',n:'매수 계약금 (아델리움 3차)',i:'',o:70000000,m:'계약금 총 8,000만 원 − 가계약금 1,000만 원'},
  {on:true,d:'2027-01-28',n:'매도 잔금',auto:'sellBal'},
  {on:true,d:'',n:'매도 중개수수료',auto:'sfee'},
  {on:true,d:'',n:'주담대 실행',auto:'loan',m:'매수 잔금일 미정'},
@@ -367,6 +368,20 @@ if(store.fStart==null)store.fStart=0;
 function migrateKkj(){const r=(store.flow||[]).find(x=>!x.auto&&/공제회/.test(x.n||''));if(!r)return;
  const el=document.querySelector('[data-k="kkj"]');if(el&&!num(el.value)&&num(r.i)){el.value=won(num(r.i));saveInputs();}
  r.auto='kkj';delete r.i;delete r.o;save();}
+// 2026-11-16 매수 확정: 8억 9,900만 원 · 전용 84.77㎡ · 가계약금 1,000만 + 나머지 계약금 7,000만 (총 8,000만) — 한 번만 반영
+function migrateDeposit(){
+ if(store.migDep)return false;
+ const f=store.flow;
+ const isK=r=>!r.auto&&/매수/.test(r.n||'')&&/계약금/.test(r.n||'');
+ let ga=f.find(r=>isK(r)&&/가계약금/.test(r.n)), k=f.find(r=>isK(r)&&!/가계약금/.test(r.n));
+ if(!k){k={on:true,d:'',n:'매수 계약금 (아델리움 3차)',i:''};const j=f.findIndex(r=>r.auto==='sellBal');f.splice(j<0?f.length:j,0,k);}
+ k.o=70000000;k.m='계약금 총 8,000만 원 − 가계약금 1,000만 원';k.on=true;
+ if(!ga){ga={on:true,d:'',n:'매수 가계약금 (아델리움 3차)',i:''};f.splice(f.indexOf(k),0,ga);}
+ ga.o=10000000;ga.m='계약금 총 8,000만 원에 포함';ga.on=true;
+ const set=(key,v)=>{const el=document.querySelector(`[data-k="${key}"]`);if(el)el.value=v;};
+ set('buy','899,000,000');set('area','84.77');saveInputs();
+ store.migDep=true;save();return true;
+}
 let FX={};   // calc에서 채우는 자동 금액 재료
 const fmtD=d=>{if(!d)return'';const[y,m,dd]=d.split('-');return `${+m}/${+dd}`};
 function flowOrder(){return store.flow.map((_,k)=>k)}
@@ -478,14 +493,15 @@ document.querySelectorAll('[data-k]').forEach(el=>{
 // 휴대폰 키보드에 따라 input 이벤트가 늦게 오는 경우가 있어 change·keyup·입력완료에도 다시 계산
 ['change','keyup','compositionend'].forEach(ev=>document.getElementById('p0').addEventListener(ev,e=>{if(e.target.matches('input'))calc()}));
 window.mainState={
- get:()=>({inputs:getInputs(),rates:store.rates||{},todo:store.todo||{},flow:store.flow,fStart:store.fStart}),
- set:o=>{if(!o)return;setInputs(o.inputs);saveInputs();store.rates=o.rates||{};store.todo=o.todo||{};if(Array.isArray(o.flow))store.flow=o.flow;if(o.fStart!=null)store.fStart=o.fStart;save();migrateKkj();renderFlow();
+ get:()=>({inputs:getInputs(),rates:store.rates||{},todo:store.todo||{},flow:store.flow,fStart:store.fStart,migDep:!!store.migDep}),
+ migrated:false,
+ set:o=>{if(!o)return;setInputs(o.inputs);saveInputs();store.rates=o.rates||{};store.todo=o.todo||{};if(Array.isArray(o.flow))store.flow=o.flow;if(o.fStart!=null)store.fStart=o.fStart;store.migDep=!!o.migDep;save();migrateKkj();window.mainState.migrated=migrateDeposit();renderFlow();
   document.querySelectorAll('[data-bank]').forEach(el=>el.value=store.rates[el.dataset.bank]||'');
   document.querySelectorAll('[data-todo]').forEach(el=>el.checked=!!store.todo[el.dataset.todo]);calc();}
 };
 document.querySelectorAll('[data-bank]').forEach(el=>el.addEventListener('input',()=>{store.rates=store.rates||{};store.rates[el.dataset.bank]=el.value;save();calc()}));
 document.querySelectorAll('[data-todo]').forEach(el=>el.addEventListener('change',()=>{store.todo=store.todo||{};store.todo[el.dataset.todo]=el.checked;save();calc()}));
-migrateKkj();calc();
+migrateKkj();migrateDeposit();calc();
 renderFlow();
 </script>
 <script>(()=>{
@@ -625,6 +641,7 @@ async function load(){
       const d=snap.data();
       window.interiorState.set(d.interior);   // 인테리어 먼저 (합계가 자금 계획 칸에 반영됨)
       window.mainState.set(d.main);
+      if(window.mainState.migrated){loaded=true;return save();}   // 계약금 변경을 한 번 반영했으면 서버에도 저장
       const st=window.mainState.get(),filled=st.fStart>0||st.flow.some(r=>!r.auto&&(Number(r.i)||Number(r.o)));
       if(!(d.main&&d.main.flow)&&filled){loaded=true;return save();}
       show('☁️ 마지막 저장 '+(d.updatedAt?hhmm(d.updatedAt.toDate()):'')+' · 바꾸면 자동 저장');
