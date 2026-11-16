@@ -407,10 +407,10 @@ function updateFlow(){
 }
 (()=>{const P0=document.getElementById('p0');
  const onFlow=e=>{const el=e.target;
-  if(el.id==='fStart'){store.fStart=num(el.value);save();return updateFlow();}
+  if(el.id==='fStart'){store.fStart=num(el.value);save();return calc();}
   if(el.dataset.fl==null)return;const r=store.flow[+el.dataset.fl],f=el.dataset.ff;
   if(f==='on')r.on=el.checked;else if(f==='i'||f==='o')r[f]=el.value.trim()===''?'':num(el.value);else r[f]=el.value;
-  save();updateFlow();};
+  save();calc();};
  ['input','change'].forEach(ev=>P0.addEventListener(ev,onFlow,true));
  P0.addEventListener('click',e=>{const d=e.target.dataset;
   if(d.fmv!=null){const k=+d.fmv,j=k+(+d.dir);if(j<0||j>=store.flow.length)return;[store.flow[k],store.flow[j]]=[store.flow[j],store.flow[k]];save();renderFlow();document.querySelector(`[data-fmv="${j}"][data-dir="${d.dir}"]`)?.focus();return;}
@@ -428,12 +428,13 @@ function calc(){
  const brk=v=>v<5e7?0.006:v<2e8?0.005:v<9e8?0.004:v<12e8?0.005:v<15e8?0.006:0.007;   // 주택 매매 중개보수 상한요율
  const tax=Math.round(buy*taxR), feeR=brk(buy), fee=Math.round(buy*feeR*disc*1.1), etc=1500000,stamp=75000,move=3000000;
  const need=buy+tax+fee+etc+stamp+move+interior+appl;
- const sfeeR=brk(sell), sfee=Math.round(sell*sfeeR*1.1), have=sell-sfee+loan+subs+kkj;
+ const sfeeR=brk(sell), sfee=Math.round(sell*sfeeR*1.1), adj=(store.fStart||0)-(store.flow||[]).filter(r=>!r.on&&!r.auto&&/매도.*(계약금|중도금)/.test(r.n||'')).reduce((a,r)=>a+num(r.i),0),   // 지금 통장 잔액 − 이미 받은 매도 계약금
+ have=sell-sfee+loan+subs+kkj+adj;
  const s1=need-have, s2=s1+mi;
  FX={sell,buy,loan,tax,fee,etc,stamp,move,interior,appl,subs,kkj,sfee};if($('#flowBody').children.length)updateFlow();
  const rows=[['sub','[필요한 돈]',''],['','매매가',buy],['',`취득세 등 <span class="note">합계 ${(taxR*100).toFixed(2)}% = 취득세 ${(acqR*100).toFixed(2)}% + 지방교육세 ${(acqR*10).toFixed(2)}%${area>85?' + 농특세 0.2%':''} (전용 ${area}㎡)</span>`,tax],['',`매수 중개수수료 <span class="note">법정 ${(feeR*100).toFixed(1)}%의 ${Math.round(disc*100)}%, 부가세 포함</span>`,fee],['','법무사·채권·등기 <span class="note">추정</span>',etc],['','대출 인지세',stamp],['','이사비 <span class="note">추정</span>',move],['','인테리어',interior],['','가전',appl],['tot','필요한 돈 합계',need],
- ['sub','[쓸 수 있는 돈]',''],['','매도 대금',sell],['',`매도 중개수수료 <span class="note">${(sfeeR*100).toFixed(1)}%, 부가세 포함</span>`,-sfee],['','주담대',loan],['','청약통장 해지금',subs],['',`교직원공제회 대여 <span class="note">금리 ${(kkjr*100).toFixed(2)}% · ${kkjy}년 거치 · 월 이자 약 ${won(kkj*kkjr/12)}원 · ${kkjy}년 뒤 원금 ${man(kkj)} 상환 · DSR 미반영</span>`,kkj],['tot','쓸 수 있는 돈 합계',have],
- ['sub','[부족액]',''],['tot',`부족액 <span class="note">${s1>0?'약 '+man(s1)+' 모자람':'약 '+man(-s1)+' 남음'} · 지금 통장 잔액은 빼고 계산 (최종 잔액은 돈 흐름표 참고)</span>`,s1],...(mi>0?[['tot',`부족액 (마이너스통장 정리 포함) <span class="note">${s2>0?'약 '+man(s2)+' 모자람':'약 '+man(-s2)+' 남음'}</span>`,s2]]:[])];
+ ['sub','[쓸 수 있는 돈]',''],['','매도 대금',sell],['',`매도 중개수수료 <span class="note">${(sfeeR*100).toFixed(1)}%, 부가세 포함</span>`,-sfee],['','주담대',loan],['','청약통장 해지금',subs],...(adj?[['',adj<0?`이미 쓴 매도 계약금 <span class="note">받은 계약금 중 마이너스통장 상환 등으로 쓴 돈 (받은 계약금 − 지금 통장 잔액)</span>`:`지금 통장의 추가 예금 <span class="note">지금 통장 잔액 − 이미 받은 매도 계약금</span>`,adj]]:[]),['',`교직원공제회 대여 <span class="note">금리 ${(kkjr*100).toFixed(2)}% · ${kkjy}년 거치 · 월 이자 약 ${won(kkj*kkjr/12)}원 · ${kkjy}년 뒤 원금 ${man(kkj)} 상환 · DSR 미반영</span>`,kkj],['tot','쓸 수 있는 돈 합계',have],
+ ['sub','[부족액]',''],['tot',`부족액 <span class="note">${s1>0?'약 '+man(s1)+' 모자람':'약 '+man(-s1)+' 남음'} · 돈 흐름표 마지막 잔액과 같음</span>`,s1],...(mi>0?[['tot',`부족액 (마이너스통장 정리 포함) <span class="note">${s2>0?'약 '+man(s2)+' 모자람':'약 '+man(-s2)+' 남음'}</span>`,s2]]:[])];
  $('#ltvTxt').textContent=buy?`광주(비규제지역) 70% → 매수가 ${man(buy)} 기준 최대 약 ${man(buy*0.7)}`:'광주(비규제지역) 70%';
  $('#moneyBody').innerHTML=rows.map(r=>`<tr class="${r[0]}"><td>${r[1]}</td><td class="n">${r[2]===''?'':won(r[2])}</td></tr>`).join('');
 
