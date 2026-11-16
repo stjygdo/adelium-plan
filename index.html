@@ -188,7 +188,7 @@ table.flow .note{display:block;font-size:12px;color:var(--muted)}
 <thead><tr><th>항목</th><th class="n">금액 (원)</th></tr></thead>
 <tbody id="moneyBody"></tbody>
 </table></div>
-<p class="small">※ 법무사·채권·등기 150만 원, 대출 인지세 7.5만 원, 이사비 250만 원은 추정치입니다. 양도세는 1주택 비과세로 가정했고, 중개사는 일반과세자(부가세 10%)로 가정했습니다.</p>
+<p class="small">※ 법무사·채권·등기 150만 원, 대출 인지세 7.5만 원, 이사비 300만 원은 추정치입니다. 양도세는 1주택 비과세로 가정했고, 중개사는 일반과세자(부가세 10%)로 가정했습니다.</p>
 </section>
 
 <section id="flow">
@@ -426,7 +426,7 @@ function calc(){
  const acqR=buy<=6e8?0.01:buy>9e8?0.03:Math.round((buy*2/3e8-3)*1e4)/1e4/100;
  const taxR=acqR*1.1+(area>85?0.002:0);
  const brk=v=>v<5e7?0.006:v<2e8?0.005:v<9e8?0.004:v<12e8?0.005:v<15e8?0.006:0.007;   // 주택 매매 중개보수 상한요율
- const tax=Math.round(buy*taxR), feeR=brk(buy), fee=Math.round(buy*feeR*disc*1.1), etc=1500000,stamp=75000,move=2500000;
+ const tax=Math.round(buy*taxR), feeR=brk(buy), fee=Math.round(buy*feeR*disc*1.1), etc=1500000,stamp=75000,move=3000000;
  const need=buy+tax+fee+etc+stamp+move+interior+appl;
  const sfeeR=brk(sell), sfee=Math.round(sell*sfeeR*1.1), have=sell-sfee+loan+subs+kkj;
  const s1=need-have, s2=s1+mi;
