@@ -120,6 +120,24 @@ a{color:#ffe29a}
 #p0 nav a:last-child,#p1 nav a:last-child{margin-right:auto}
 input[type=date]{width:100%;padding:7px 8px;border:1px solid rgba(255,214,120,.42);border-radius:8px;font:inherit;font-size:14px;background:var(--hl);color:#fff6dc;color-scheme:dark}
 table.flow{min-width:700px}
+.fchart{margin:6px 0 14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:8px 6px 4px}
+.fchart svg{display:block;width:100%;height:auto}
+.fchart text{font-family:inherit;fill:#a9b0d6;font-size:11px}
+.fphases{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:14px}
+.fph{border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:12px 14px;background:rgba(255,255,255,.04);cursor:pointer;transition:background .15s}
+.fph:hover{background:rgba(245,199,107,.08)}
+.fph .t{font-size:13px;color:#ffe7a8;font-weight:700}
+.fph .d{font-size:12px;color:var(--muted);margin-bottom:6px}
+.fph .io{font-size:13px;display:flex;justify-content:space-between;gap:6px}
+.fph .in{color:var(--ok)}.fph .out{color:#ff9f9f}
+.fph .end{margin-top:6px;padding-top:6px;border-top:1px dashed rgba(255,255,255,.12);display:flex;justify-content:space-between;align-items:baseline}
+.fph .end b{font-size:19px;color:#fff}
+.fph.neg{border-color:rgba(255,138,138,.6);background:rgba(255,138,138,.08)}
+.fph.neg .end b{color:var(--warn)}
+.fph .tg{font-size:11px;color:var(--muted)}
+table.flow tr.phase td{background:rgba(245,199,107,.1);color:#ffe7a8;font-weight:700;cursor:pointer;padding:8px 10px}
+table.flow tr.phase td .ps{float:right;font-weight:500;color:#f3eedc;font-size:13px}
+table.flow tr.hid{display:none}
 .mvs{white-space:nowrap}
 .mv{border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.05);color:#ffe29a;border-radius:6px;width:24px;height:26px;padding:0;font-size:11px;cursor:pointer;margin-right:2px}
 .mv:hover:not(:disabled){background:rgba(245,199,107,.2)}
@@ -196,12 +214,13 @@ table.flow .note{display:block;font-size:12px;color:var(--muted)}
 <h2>2. 날짜별 돈 흐름</h2>
 <div class="inputs"><div><label>지금 통장 잔액 (시작)</label><input type="text" inputmode="numeric" class="m" id="fStart"><div class="hint">2026년 11월 9일 기준</div></div></div>
 <div id="flowSum" class="flowsum"></div>
+<div id="flowPhases" class="fphases"></div>
 <div class="tbl"><table class="flow">
 <thead><tr><th style="width:56px">순서</th><th style="width:44px">반영</th><th style="width:150px">날짜</th><th>내용</th><th class="n">들어옴</th><th class="n">나감</th><th class="n">잔액</th><th style="width:36px"></th></tr></thead>
 <tbody id="flowBody"></tbody>
 </table></div>
 <button class="add" id="flowAdd" type="button">+ 줄 추가</button> <button class="add" id="flowSort" type="button">📅 날짜순으로 정렬</button>
-<p class="small">※ <b>자동</b> 금액은 위 입력값으로 계산됩니다. ▲▼로 줄 순서를 바꿀 수 있고, 잔액은 위에서부터 순서대로 계산됩니다. '날짜순으로 정렬'을 누르면 날짜 순서로 다시 놓습니다(빈 날짜는 바로 위 줄과 같은 날로 봄). 이름에 '매수 중도금'·'매도 중도금'처럼 쓰면 잔금에서 자동으로 빠집니다. 체크를 풀면 계산에서 뺍니다.</p>
+<p class="small">※ 단계 카드를 누르면 그 단계 줄만 펼쳐 보이고, 표의 단계 줄을 누르면 접거나 펼칩니다. <b>자동</b> 금액은 위 입력값으로 계산됩니다. ▲▼로 줄 순서를 바꿀 수 있고, 잔액은 위에서부터 순서대로 계산됩니다. '날짜순으로 정렬'을 누르면 날짜 순서로 다시 놓습니다(빈 날짜는 바로 위 줄과 같은 날로 봄). 이름에 '매수 중도금'·'매도 중도금'처럼 쓰면 잔금에서 자동으로 빠집니다. 체크를 풀면 계산에서 뺍니다.</p>
 </section>
 
 <section id="loan">
@@ -393,28 +412,50 @@ function flowAmt(r){
  const v={sellBal:FX.sell-sum(/매도.*(계약금|중도금)/,'i'),buyBal:FX.buy-sum(/매수.*(계약금|중도금)/,'o'),regi:FX.tax+FX.etc+FX.stamp}[r.auto]??FX[r.auto]??0;
  return AUTO_IO[r.auto]==='i'?{i:v,o:0}:{i:0,o:v};
 }
+// 단계: 매도 잔금 / (주담대·매수 잔금) / (이사비·인테리어·가전) 줄의 위치를 경계로 4단계로 나눔
+const PH_NAMES=['① 계약','② 매도 잔금','③ 매수 잔금','④ 입주 준비'];
+const phClosed=new Set();
+function flowPhases(){
+ const ord=flowOrder(),pos=a=>{const i=ord.findIndex(k=>a.includes(store.flow[k].auto));return i<0?Infinity:i};
+ const b=[pos(['sellBal']),pos(['loan','buyBal']),pos(['move','interior','appl'])].sort((x,y)=>x-y);
+ return ord.map((k,i)=>({k,ph:b.filter(x=>i>=x).length}));
+}
 function renderFlow(){
  $('#fStart').value=won(store.fStart);
  const W=v=>v===''||v==null?'':won(num(v));
- $('#flowBody').innerHTML=flowOrder().map(k=>{const r=store.flow[k];
+ let lastPh=-1;
+ $('#flowBody').innerHTML=flowPhases().map(({k,ph})=>{const r=store.flow[k];
+  const head=ph!==lastPh?(lastPh=ph,`<tr class="phase" data-ph="${ph}"><td colspan="8">${phClosed.has(ph)?'▸':'▾'} ${PH_NAMES[ph]}<span class="ps" data-phs="${ph}"></span></td></tr>`):'';
   const cell=f=>r.auto?`<td class="n" data-fv="${k}${f}"></td>`:`<td><input type="text" inputmode="numeric" class="m" data-fl="${k}" data-ff="${f}" value="${W(r[f])}" placeholder="0"></td>`;
-  return `<tr data-row="${k}"><td class="mvs"><button class="mv" type="button" data-fmv="${k}" data-dir="-1" title="위로" ${k===0?'disabled':''}>▲</button><button class="mv" type="button" data-fmv="${k}" data-dir="1" title="아래로" ${k===store.flow.length-1?'disabled':''}>▼</button></td><td><input type="checkbox" class="chk" data-fl="${k}" data-ff="on" ${r.on?'checked':''}></td>
+  return head+`<tr data-row="${k}" data-rph="${ph}" class="${phClosed.has(ph)?'hid':''}"><td class="mvs"><button class="mv" type="button" data-fmv="${k}" data-dir="-1" title="위로" ${k===0?'disabled':''}>▲</button><button class="mv" type="button" data-fmv="${k}" data-dir="1" title="아래로" ${k===store.flow.length-1?'disabled':''}>▼</button></td><td><input type="checkbox" class="chk" data-fl="${k}" data-ff="on" ${r.on?'checked':''}></td>
   <td><input type="date" data-fl="${k}" data-ff="d" value="${r.d||''}"></td>
   <td>${r.auto?'<span class="auto">자동</span>':''}<input type="text" data-fl="${k}" data-ff="n" value="${String(r.n||'').replace(/"/g,'&quot;')}" placeholder="내용" style="${r.auto?'width:calc(100% - 44px)':''}">${r.m?`<span class="note">${r.m}</span>`:''}</td>
   ${cell('i')}${cell('o')}<td class="n" data-fb="${k}">-</td>
   <td>${r.auto?'':`<button class="del" type="button" data-fdel="${k}" title="삭제">×</button>`}</td></tr>`}).join('');
  updateFlow();
 }
+function drawPhases(P){
+ let prev=store.fStart;
+ $('#flowPhases').innerHTML=P.map((q,i)=>{if(q.end==null)q.end=prev;prev=q.end;
+  const d=q.d1?(q.d1===q.d2?fmtD(q.d1):`${fmtD(q.d1)}~${fmtD(q.d2)}`):'날짜 미정';
+  return `<div class="fph ${q.end<0?'neg':''}" data-phc="${i}"><div class="t">${PH_NAMES[i]}</div><div class="d">${d} · ${q.n}건</div>
+  <div class="io"><span>들어옴</span><span class="in">+${man(q.i)}</span></div><div class="io"><span>나감</span><span class="out">−${man(q.o)}</span></div>
+  <div class="end"><span class="tg">끝난 뒤 잔액</span><b>${q.end<0?'−':''}${man(Math.abs(q.end))}</b></div></div>`}).join('');
+ P.forEach((q,i)=>{const e=document.querySelector(`[data-phs="${i}"]`);if(e)e.textContent=`+${man(q.i)} / −${man(q.o)} → 잔액 ${q.end<0?'−':''}${man(Math.abs(q.end))}`;});
+}
 function updateFlow(){
  let bal=store.fStart,min=Infinity,minRow=null;
- flowOrder().forEach(k=>{const r=store.flow[k],a=flowAmt(r),tr=document.querySelector(`#flowBody tr[data-row="${k}"]`);if(!tr)return;
+ const P=PH_NAMES.map(()=>({i:0,o:0,end:null,d1:'',d2:'',n:0}));
+ flowPhases().forEach(({k,ph})=>{const r=store.flow[k],a=flowAmt(r),tr=document.querySelector(`#flowBody tr[data-row="${k}"]`);if(!tr)return;
   tr.classList.toggle('off',!r.on);
   if(r.auto){tr.querySelector(`[data-fv="${k}i"]`).textContent=a.i?'+'+won(a.i):'';tr.querySelector(`[data-fv="${k}o"]`).textContent=a.o?'−'+won(a.o):'';}
   const b=tr.querySelector(`[data-fb="${k}"]`);
   if(!r.on){b.textContent='-';b.classList.remove('neg');return;}
   bal+=a.i-a.o;b.textContent=won(bal);b.classList.toggle('neg',bal<0);
   if(bal<min){min=bal;minRow=r;}
+  const q=P[ph];q.i+=a.i;q.o+=a.o;q.end=bal;q.n++;if(r.d){if(!q.d1||r.d<q.d1)q.d1=r.d;if(!q.d2||r.d>q.d2)q.d2=r.d;}
  });
+ drawPhases(P);
  $('#k_endl').textContent=bal<0?'모두 끝나고 모자라는 돈':'모두 끝나고 남는 돈';$('#k_end').textContent=man(Math.abs(bal));$('#k_end').style.color=bal<0?'var(--warn)':'';
  $('#k_tight').textContent=minRow?`가장 빠듯한 날: ${minRow.d?fmtD(minRow.d)+' ':''}${minRow.n} ${min<0?man(-min)+' 부족':man(min)}`:'돈 흐름표 기준';
  const box=$('#flowSum');
@@ -430,6 +471,9 @@ function updateFlow(){
  ['input','change'].forEach(ev=>P0.addEventListener(ev,onFlow,true));
  P0.addEventListener('click',e=>{const d=e.target.dataset;
   if(d.fmv!=null){const k=+d.fmv,j=k+(+d.dir);if(j<0||j>=store.flow.length)return;[store.flow[k],store.flow[j]]=[store.flow[j],store.flow[k]];save();renderFlow();document.querySelector(`[data-fmv="${j}"][data-dir="${d.dir}"]`)?.focus();return;}
+  const ph=e.target.closest('tr.phase,[data-phc]');if(ph){const i=+(ph.dataset.ph??ph.dataset.phc);phClosed.has(i)?phClosed.delete(i):phClosed.add(i);
+   if(ph.dataset.phc!=null){phClosed.clear();PH_NAMES.forEach((_,j)=>{if(j!==i)phClosed.add(j)});}
+   renderFlow();if(ph.dataset.phc!=null)document.querySelector(`tr.phase[data-ph="${i}"]`)?.scrollIntoView({block:'nearest',behavior:'smooth'});return;}
   if(e.target.id==='flowSort'){flowSortByDate();save();renderFlow();return;}
   if(e.target.id==='flowAdd'){store.flow.push({on:true,d:'',n:'',i:'',o:''});save();renderFlow();const ns=document.querySelectorAll('#flowBody [data-ff="n"]');ns[ns.length-1]?.focus();}
   if(d.fdel!=null){const r=store.flow[+d.fdel];if((r.n||r.i||r.o)&&!d.armed){e.target.dataset.armed='1';e.target.textContent='삭제?';setTimeout(()=>{if(e.target.isConnected){delete e.target.dataset.armed;e.target.textContent='×'}},2500);return;}
