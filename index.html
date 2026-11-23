@@ -169,6 +169,21 @@ table.flow .note{display:block;font-size:12px;color:var(--muted)}
 .zmemo{margin-top:10px}
 .zmemo textarea{width:100%;min-height:44px;padding:9px 10px;border-radius:8px;font:inherit;font-size:14px;resize:vertical}
 @media (max-width:640px){.ritem{grid-template-columns:86px 1fr 28px}.ritem textarea{grid-column:1/-1;grid-row:2}.rbtn{margin:4px 6px 0 0}}
+.zphotos{margin-top:12px}
+.zphotos .lbl{font-size:13px;color:var(--muted);margin-bottom:6px;display:flex;align-items:center;gap:8px}
+.pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.ph{position:relative;border-radius:12px;overflow:hidden;border:1px solid var(--line);background:#faf6f1}
+.ph img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;cursor:zoom-in;background:#f3ede6}
+.ph .wait{display:flex;align-items:center;justify-content:center;aspect-ratio:4/3;font-size:12px;color:var(--muted)}
+.ph input{border:0;border-top:1px solid var(--line);border-radius:0;background:#fff;font-size:12px;padding:6px 8px}
+.ph .x{position:absolute;top:6px;right:6px;width:26px;height:26px;border-radius:50%;border:0;background:rgba(0,0,0,.55);color:#fff;font-size:15px;cursor:pointer;line-height:26px;padding:0}
+.padd{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;aspect-ratio:4/3;border:2px dashed #ffc9a8;border-radius:12px;background:#fffaf6;color:var(--accent);font-size:13px;font-weight:700;cursor:pointer}
+.padd:hover{background:var(--accent2)}
+.padd b{font-size:26px;line-height:1}
+#lightbox{position:fixed;inset:0;z-index:50;background:rgba(20,16,12,.85);display:none;align-items:center;justify-content:center;flex-direction:column;gap:10px;padding:20px}
+#lightbox.on{display:flex}
+#lightbox img{max-width:100%;max-height:82vh;border-radius:10px}
+#lightbox div{color:#fff;font-size:14px}
 #reqPrintView{display:none}
 @media print{
  html,body{height:auto;overflow:visible;display:block;background:#fff}
@@ -181,6 +196,9 @@ table.flow .note{display:block;font-size:12px;color:var(--muted)}
  #reqPrintView td{border:1px solid #999;padding:4px 6px;vertical-align:top}
  #reqPrintView td.p{width:44px;text-align:center;font-weight:700}
  #reqPrintView td.t{width:28%;font-weight:700}
+ #reqPrintView .pimgs{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+ #reqPrintView .pimgs figure{margin:0;width:31%;font-size:10px;text-align:center}
+ #reqPrintView .pimgs img{width:100%;max-width:none;margin:0;aspect-ratio:4/3;object-fit:cover}
 }
 </style>
 </head>
@@ -727,9 +745,13 @@ function render(){
    <textarea data-z="${i}" data-j="${j}" data-f="d" placeholder="요구사항을 자세히 (위치·제품·치수 등)">${esc(r.d)}</textarea>
    <button class="del" type="button" data-rdel="${i}:${j}" title="삭제">×</button></div>`).join('')}
   <button class="add" type="button" data-radd="${i}">+ 항목 추가</button>
+  <div class="zphotos"><div class="lbl">📷 원하는 스타일 사진 <span data-pc="${i}">${(z.photos||[]).length}장</span></div><div class="pgrid">
+   ${(z.photos||[]).map((ph,k)=>`<div class="ph"><div class="wait" data-pimg="${ph.id}">불러오는 중…</div><button class="x" type="button" data-pdel="${i}:${k}" title="사진 삭제">×</button><input type="text" data-pcap="${i}:${k}" value="${esc(ph.cap)}" placeholder="설명 (예: 이 느낌의 바닥)"></div>`).join('')}
+   <label class="padd"><b>＋</b>사진 넣기<input type="file" accept="image/*" multiple data-pup="${i}" hidden></label></div></div>
   <div class="zmemo"><textarea data-zm="${i}" placeholder="이 구역 메모 (참고 사진 링크, 치수 등)">${esc(z.memo)}</textarea></div></section>`).join('');
  P2.querySelectorAll('textarea').forEach(grow);
  count();
+ PH.size&&st.zones.forEach(z=>(z.photos||[]).forEach(p=>showPhoto(p.id)));
 }
 function count(){
  const all=st.zones.flatMap(z=>z.items);
@@ -756,8 +778,8 @@ P2.addEventListener('click',e=>{const d=e.target.dataset;
 });
 function asText(){
  const L=['[인테리어 요구사항]',...INFO.filter(([k])=>st.info[k]).map(([k,l])=>`· ${l}: ${st.info[k]}`),'','※ 필수 = 꼭 해야 함 / 희망 = 가능하면 / 상담 = 견적·제안 부탁'];
- st.zones.forEach(z=>{const its=z.items.filter(r=>r.t||r.d);if(!its.length&&!z.memo)return;
-  L.push('',`■ ${z.name}`);its.forEach(r=>L.push(`- (${r.p}) ${r.t}${r.d?': '+r.d:''}`));if(z.memo)L.push(`  메모: ${z.memo}`)});
+ st.zones.forEach(z=>{const its=z.items.filter(r=>r.t||r.d);if(!its.length&&!z.memo&&!(z.photos||[]).length)return;
+  L.push('',`■ ${z.name}`);its.forEach(r=>L.push(`- (${r.p}) ${r.t}${r.d?': '+r.d:''}`));if(z.memo)L.push(`  메모: ${z.memo}`);if((z.photos||[]).length)L.push(`  참고 사진 ${z.photos.length}장 (사진은 따로 보내 드립니다)`)});
  return L.join('\n');
 }
 async function copyText(btn){const t=asText();
@@ -766,9 +788,37 @@ async function copyText(btn){const t=asText();
 function printView(){
  let v=document.getElementById('reqPrintView');if(!v){v=document.createElement('div');v.id='reqPrintView';document.body.appendChild(v)}
  v.innerHTML=`<h1>인테리어 요구사항</h1><div>${INFO.filter(([k])=>st.info[k]).map(([k,l])=>`${l}: <b>${esc(st.info[k])}</b>`).join(' · ')}</div><img src="plan-e.jpg" alt=""><div style="font-size:11px">필수 = 꼭 해야 함 / 희망 = 가능하면 / 상담 = 견적·제안 부탁</div>`+
-  st.zones.map(z=>{const its=z.items.filter(r=>r.t||r.d);if(!its.length&&!z.memo)return'';return `<h3>${z.icon} ${esc(z.name)}</h3><table>${its.map(r=>`<tr><td class="p">${r.p}</td><td class="t">${esc(r.t)}</td><td>${esc(r.d)}</td></tr>`).join('')}</table>${z.memo?`<div style="margin-top:4px">메모: ${esc(z.memo)}</div>`:''}`}).join('');
- const img=v.querySelector('img');const go=()=>window.print();img.complete?go():(img.onload=go,img.onerror=go);
+  st.zones.map(z=>{const its=z.items.filter(r=>r.t||r.d);if(!its.length&&!z.memo&&!(z.photos||[]).length)return'';return `<h3>${z.icon} ${esc(z.name)}</h3><table>${its.map(r=>`<tr><td class="p">${r.p}</td><td class="t">${esc(r.t)}</td><td>${esc(r.d)}</td></tr>`).join('')}</table>${z.memo?`<div style="margin-top:4px">메모: ${esc(z.memo)}</div>`:''}${(z.photos||[]).filter(p=>PH.get(p.id)).length?`<div class="pimgs">${z.photos.filter(p=>PH.get(p.id)).map(p=>`<figure><img src="${PH.get(p.id)}" alt=""><figcaption>${esc(p.cap)}</figcaption></figure>`).join('')}</div>`:''}`}).join('');
+ const imgs=[...v.querySelectorAll('img')];Promise.all(imgs.map(im=>im.complete?1:new Promise(r=>{im.onload=im.onerror=r}))).then(()=>window.print());
 }
+// ----- 스타일 사진: 줄여서(최대 1280px JPEG) 서버 문서 하나에 한 장씩 저장
+const PH=new Map();   // id → dataURL
+function showPhoto(id){const box=P2.querySelector(`[data-pimg="${id}"]`);if(!box)return;const d=PH.get(id);
+ if(d===null){box.textContent='사진을 불러오지 못했습니다';return;}
+ if(!d)return;const img=document.createElement('img');img.src=d;img.alt='';img.dataset.zoom=id;box.replaceWith(img);}
+window.reqLoadPhotos=async()=>{if(!window.photoStore)return;
+ for(const z of st.zones)for(const ph of (z.photos||[])){if(PH.has(ph.id)){showPhoto(ph.id);continue;}
+  try{const d=await window.photoStore.get(ph.id);PH.set(ph.id,d||null)}catch(e){PH.set(ph.id,null)}showPhoto(ph.id);}};
+function shrink(file){return new Promise((ok,no)=>{const u=URL.createObjectURL(file),im=new Image();
+ im.onload=()=>{let w=im.naturalWidth,h=im.naturalHeight;const m=1280;if(Math.max(w,h)>m){const r=m/Math.max(w,h);w=Math.round(w*r);h=Math.round(h*r)}
+  const c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(im,0,0,w,h);URL.revokeObjectURL(u);
+  let q=.8,d=c.toDataURL('image/jpeg',q);while(d.length>700000&&q>.35){q-=.1;d=c.toDataURL('image/jpeg',q)}ok(d)};
+ im.onerror=()=>{URL.revokeObjectURL(u);no(new Error('이미지를 읽을 수 없습니다'))};im.src=u;});}
+P2.addEventListener('change',async e=>{const el=e.target;if(el.dataset.pup==null)return;const i=+el.dataset.pup,files=[...el.files];el.value='';
+ if(!files.length)return;
+ if(!window.photoStore||!window.photoStore.ready){alert('사진은 비밀 링크로 들어왔을 때만 저장할 수 있습니다.');return;}
+ const lbl=P2.querySelector(`[data-pc="${i}"]`);
+ for(const f of files){try{lbl.textContent='올리는 중…';const d=await shrink(f),id=Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+   await window.photoStore.put(id,d);PH.set(id,d);(st.zones[i].photos=st.zones[i].photos||[]).push({id,cap:''});save();}
+  catch(err){alert('사진을 올리지 못했습니다: '+(err.code||err.message||err));}}
+ render();window.reqLoadPhotos();window.cloudSchedule&&window.cloudSchedule();});
+P2.addEventListener('input',e=>{const d=e.target.dataset;if(d.pcap==null)return;const[i,k]=d.pcap.split(':').map(Number);st.zones[i].photos[k].cap=e.target.value;save();});
+P2.addEventListener('click',async e=>{const d=e.target.dataset;
+ if(d.zoom){const lb=document.getElementById('lightbox')||Object.assign(document.body.appendChild(document.createElement('div')),{id:'lightbox'});
+  const ph=st.zones.flatMap(z=>z.photos||[]).find(p=>p.id===d.zoom);lb.innerHTML=`<img src="${PH.get(d.zoom)}" alt=""><div>${esc(ph&&ph.cap||'')}</div>`;lb.classList.add('on');lb.onclick=()=>lb.classList.remove('on');return;}
+ if(d.pdel){const[i,k]=d.pdel.split(':').map(Number);if(!confirm('이 사진을 지울까요?'))return;const ph=st.zones[i].photos.splice(k,1)[0];save();render();window.reqLoadPhotos();
+  try{await window.photoStore.del(ph.id)}catch(err){}PH.delete(ph.id);window.cloudSchedule&&window.cloudSchedule();}
+});
 window.reqState={get:()=>JSON.parse(JSON.stringify(st)),set:o=>{if(!o||!Array.isArray(o.zones))return;st=o;st.info=Object.assign({},DEF.info,o.info||{});save();render();}};
 render();
 })();
@@ -839,7 +889,15 @@ const sw=document.getElementById('sw');
 sw.addEventListener('input',schedule);
 sw.addEventListener('change',schedule);
 sw.addEventListener('click',e=>{if(e.target.closest('.add,.del,.mv'))setTimeout(schedule,0)});
-load();
+const phRef=id=>doc(db,'plans',key+'~ph~'+id);
+window.photoStore={
+  ready:!!ref,
+  put:async(id,data)=>{if(!ref)throw new Error('nokey');await setDoc(phRef(id),{data,at:serverTimestamp()});},
+  get:async id=>{if(!ref)return null;const s=await getDoc(phRef(id));return s.exists()&&s.data().data||null;},
+  del:async id=>{if(!ref)return;await setDoc(phRef(id),{data:'',deleted:true,at:serverTimestamp()});}
+};
+window.cloudSchedule=schedule;
+load().then(()=>window.reqLoadPhotos&&window.reqLoadPhotos());
 </script>
 </body>
 </html>
