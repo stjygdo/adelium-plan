@@ -184,6 +184,13 @@ table.flow .note{display:block;font-size:12px;color:var(--muted)}
 #lightbox.on{display:flex}
 #lightbox img{max-width:100%;max-height:82vh;border-radius:10px}
 #lightbox div{color:#fff;font-size:14px}
+.qrow{display:grid;grid-template-columns:30px 1fr 1fr 30px;gap:8px;align-items:start;padding:8px 0;border-bottom:1px dashed var(--line)}
+.qrow input[type=checkbox]{width:20px;height:20px;margin-top:10px}
+.qrow textarea{width:100%;min-height:40px;padding:9px 10px;border-radius:8px;font:inherit;font-size:14px;resize:vertical;line-height:1.45}
+.qrow textarea.q{font-weight:600}
+.qrow.done textarea.q{text-decoration:line-through;color:var(--muted)}
+.qrow textarea.a{background:#eef8f3;border-color:#bfe6d3}
+@media (max-width:640px){.qrow{grid-template-columns:28px 1fr 28px}.qrow textarea.a{grid-column:2/3;grid-row:2}}
 #reqPrintView{display:none}
 @media print{
  html,body{height:auto;overflow:visible;display:block;background:#fff}
@@ -403,6 +410,12 @@ table.flow .note{display:block;font-size:12px;color:var(--muted)}
 </div>
 <div id="reqZones"></div>
 <button class="add" id="reqZoneAdd" type="button">+ 구역 추가</button>
+<section id="r-qs" style="margin-top:18px">
+<h2>❓ 업체에 물어볼 것 <span class="cnt" id="qCnt" style="margin-left:auto;font-size:12px;font-weight:500;color:var(--muted)"></span></h2>
+<p class="small" style="margin-top:-6px">상담 때 물어볼 질문을 적고, 들은 답을 옆에 적어 두세요. 답을 들으면 체크하면 됩니다.</p>
+<div id="reqQs"></div>
+<button class="add" type="button" id="qAdd">+ 질문 추가</button>
+</section>
 </main>
 </div>
 </div>
@@ -727,10 +740,12 @@ const DEF={
   {icon:'🌤️',name:'발코니',memo:'',items:[it('상담','바닥·벽 마감'),it('상담','확장 여부 확인')]},
   {icon:'🏠',name:'옥탑',memo:'',items:[it('필수','최대한 손대지 않기','필요한 보수만 진행')]},
   {icon:'☀️',name:'테라스',memo:'',items:[it('상담','바닥·방수 상태 점검'),it('상담','외부 조명·콘센트·수전')]}
- ]};
+ ],
+ qs:['공사 기간은 얼마나 걸리나요? 공정표를 받을 수 있나요?','견적에 포함된 범위와 빠진 항목은 무엇인가요? (철거·폐기물·자재·부가세)','계약금·중도금·잔금 지급 비율과 시기는 어떻게 되나요?','추가 비용이 생기는 경우와 그때 처리 방법은 어떻게 되나요?','반셀프로 진행하면 업체가 맡는 범위와 우리가 직접 할 부분은 어떻게 나누나요?','하자보수(A/S) 기간과 범위는 어떻게 되나요?','자재 브랜드·등급은 직접 고를 수 있나요? 샘플을 볼 수 있나요?','시스템에어컨 4대 매립 배관을 인테리어와 같이 진행할 수 있나요?','아카라 유선 IoT 스위치 시공 경험이 있나요? 배선은 어떻게 하나요?','사선 주방 구조를 살린 배치 사례가 있나요?','옥탑·테라스 방수 상태를 점검해 줄 수 있나요?','관리사무소 공사 신고·엘리베이터 보양·이웃 동의서는 누가 처리하나요?','잔금 전에 공사를 시작할 수 있도록 일정을 맞출 수 있나요?','비슷한 평형(37평) 시공 사례와 사진을 볼 수 있나요?'].map(q=>({q,a:'',done:false}))};
 let st;try{st=JSON.parse(localStorage.getItem(KEY)||'null')}catch(e){}
 if(!st||!Array.isArray(st.zones))st=JSON.parse(JSON.stringify(DEF));
 st.info=Object.assign({},DEF.info,st.info||{});
+if(!Array.isArray(st.qs))st.qs=JSON.parse(JSON.stringify(DEF.qs));
 const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(st))}catch(e){}};
 const esc=v=>String(v??'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
 const INFO=[['home','집 (단지·타입)'],['area','면적'],['type','구조'],['period','공사 희망 기간'],['way','진행 방식'],['budget','인테리어 예산'],['contact','연락처']];
@@ -749,6 +764,11 @@ function render(){
    ${(z.photos||[]).map((ph,k)=>`<div class="ph"><div class="wait" data-pimg="${ph.id}">불러오는 중…</div><button class="x" type="button" data-pdel="${i}:${k}" title="사진 삭제">×</button><input type="text" data-pcap="${i}:${k}" value="${esc(ph.cap)}" placeholder="설명 (예: 이 느낌의 바닥)"></div>`).join('')}
    <label class="padd"><b>＋</b>사진 넣기<input type="file" accept="image/*" multiple data-pup="${i}" hidden></label></div></div>
   <div class="zmemo"><textarea data-zm="${i}" placeholder="이 구역 메모 (참고 사진 링크, 치수 등)">${esc(z.memo)}</textarea></div></section>`).join('');
+ document.getElementById('reqQs').innerHTML=st.qs.map((r,k)=>`<div class="qrow ${r.done?'done':''}"><input type="checkbox" data-qd="${k}" ${r.done?'checked':''} title="답변 받음">
+  <textarea class="q" data-qq="${k}" placeholder="물어볼 질문">${esc(r.q)}</textarea>
+  <textarea class="a" data-qa="${k}" placeholder="업체 답변">${esc(r.a)}</textarea>
+  <button class="del" type="button" data-qdel="${k}" title="삭제">×</button></div>`).join('');
+ if(!document.querySelector('#reqNav a[href="#r-qs"]'))document.getElementById('reqNav').insertAdjacentHTML('beforeend','<a href="#r-qs">❓ 물어볼 것</a>');
  P2.querySelectorAll('textarea').forEach(grow);
  count();
  PH.size&&st.zones.forEach(z=>(z.photos||[]).forEach(p=>showPhoto(p.id)));
@@ -757,22 +777,29 @@ function count(){
  const all=st.zones.flatMap(z=>z.items);
  document.getElementById('reqSum').innerHTML=PRI.map(([v,c])=>`<span class="pill ${c}">${v} ${all.filter(r=>r.p===v).length}</span>`).join('');
  st.zones.forEach((z,i)=>{const e=P2.querySelector(`[data-zc="${i}"]`);if(e)e.textContent=`${z.items.length}개 항목`});
+ const qc=document.getElementById('qCnt');if(qc)qc.textContent=`답변 ${st.qs.filter(r=>r.done).length} / ${st.qs.length}`;
 }
 P2.addEventListener('input',e=>{const el=e.target,d=el.dataset;
  if(d.ri){st.info[d.ri]=el.value}
  else if(d.zn!=null){st.zones[+d.zn].name=el.value;document.getElementById('reqNav').querySelectorAll('a')[+d.zn+1].textContent=st.zones[+d.zn].icon+' '+el.value}
  else if(d.zm!=null){st.zones[+d.zm].memo=el.value;grow(el)}
+ else if(d.qq!=null){st.qs[+d.qq].q=el.value;grow(el)}
+ else if(d.qa!=null){st.qs[+d.qa].a=el.value;grow(el)}
+ else if(d.qd!=null){st.qs[+d.qd].done=el.checked;el.closest('.qrow').classList.toggle('done',el.checked);count()}
  else if(d.z!=null){const r=st.zones[+d.z].items[+d.j];r[d.f]=el.value;if(el.tagName==='TEXTAREA')grow(el);if(d.f==='p'){el.className=pc(el.value);count()}}
  else return;
  save();
 });
-P2.addEventListener('change',e=>{if(e.target.tagName==='SELECT')e.target.dispatchEvent(new Event('input',{bubbles:true}))});
+P2.addEventListener('change',e=>{if(e.target.tagName==='SELECT'||e.target.dataset.qd!=null)e.target.dispatchEvent(new Event('input',{bubbles:true}))});
 P2.addEventListener('click',e=>{const d=e.target.dataset;
  if(d.radd!=null){st.zones[+d.radd].items.push(it('필수',''));save();render();const ins=P2.querySelectorAll(`#rz${d.radd} [data-f="t"]`);ins[ins.length-1]?.focus();}
  else if(d.rdel){const[i,j]=d.rdel.split(':').map(Number),r=st.zones[i].items[j];
   if((r.t||r.d)&&!d.armed){e.target.dataset.armed='1';e.target.textContent='삭제?';setTimeout(()=>{if(e.target.isConnected){delete e.target.dataset.armed;e.target.textContent='×'}},2500);return;}
   st.zones[i].items.splice(j,1);save();render();}
  else if(e.target.id==='reqZoneAdd'){st.zones.push({icon:'📍',name:'새 구역',memo:'',items:[it('필수','')]});save();render();document.getElementById('rz'+(st.zones.length-1)).scrollIntoView({behavior:'smooth'});}
+ else if(e.target.id==='qAdd'){st.qs.push({q:'',a:'',done:false});save();render();const qs=P2.querySelectorAll('[data-qq]');qs[qs.length-1]?.focus();window.cloudSchedule&&window.cloudSchedule();}
+ else if(d.qdel!=null){const r=st.qs[+d.qdel];if((r.q||r.a)&&!d.armed){e.target.dataset.armed='1';e.target.textContent='삭제?';setTimeout(()=>{if(e.target.isConnected){delete e.target.dataset.armed;e.target.textContent='×'}},2500);return;}
+  st.qs.splice(+d.qdel,1);save();render();}
  else if(e.target.id==='reqCopy')copyText(e.target);
  else if(e.target.id==='reqPrint')printView();
 });
@@ -780,6 +807,7 @@ function asText(){
  const L=['[인테리어 요구사항]',...INFO.filter(([k])=>st.info[k]).map(([k,l])=>`· ${l}: ${st.info[k]}`),'','※ 필수 = 꼭 해야 함 / 희망 = 가능하면 / 상담 = 견적·제안 부탁'];
  st.zones.forEach(z=>{const its=z.items.filter(r=>r.t||r.d);if(!its.length&&!z.memo&&!(z.photos||[]).length)return;
   L.push('',`■ ${z.name}`);its.forEach(r=>L.push(`- (${r.p}) ${r.t}${r.d?': '+r.d:''}`));if(z.memo)L.push(`  메모: ${z.memo}`);if((z.photos||[]).length)L.push(`  참고 사진 ${z.photos.length}장 (사진은 따로 보내 드립니다)`)});
+ const qs=st.qs.filter(r=>r.q);if(qs.length){L.push('','■ 여쭤볼 것');qs.forEach((r,k)=>L.push(`${k+1}. ${r.q}${r.a?`\n   → ${r.a}`:''}`))}
  return L.join('\n');
 }
 async function copyText(btn){const t=asText();
@@ -788,7 +816,7 @@ async function copyText(btn){const t=asText();
 function printView(){
  let v=document.getElementById('reqPrintView');if(!v){v=document.createElement('div');v.id='reqPrintView';document.body.appendChild(v)}
  v.innerHTML=`<h1>인테리어 요구사항</h1><div>${INFO.filter(([k])=>st.info[k]).map(([k,l])=>`${l}: <b>${esc(st.info[k])}</b>`).join(' · ')}</div><img src="plan-e.jpg" alt=""><div style="font-size:11px">필수 = 꼭 해야 함 / 희망 = 가능하면 / 상담 = 견적·제안 부탁</div>`+
-  st.zones.map(z=>{const its=z.items.filter(r=>r.t||r.d);if(!its.length&&!z.memo&&!(z.photos||[]).length)return'';return `<h3>${z.icon} ${esc(z.name)}</h3><table>${its.map(r=>`<tr><td class="p">${r.p}</td><td class="t">${esc(r.t)}</td><td>${esc(r.d)}</td></tr>`).join('')}</table>${z.memo?`<div style="margin-top:4px">메모: ${esc(z.memo)}</div>`:''}${(z.photos||[]).filter(p=>PH.get(p.id)).length?`<div class="pimgs">${z.photos.filter(p=>PH.get(p.id)).map(p=>`<figure><img src="${PH.get(p.id)}" alt=""><figcaption>${esc(p.cap)}</figcaption></figure>`).join('')}</div>`:''}`}).join('');
+  st.zones.map(z=>{const its=z.items.filter(r=>r.t||r.d);if(!its.length&&!z.memo&&!(z.photos||[]).length)return'';return `<h3>${z.icon} ${esc(z.name)}</h3><table>${its.map(r=>`<tr><td class="p">${r.p}</td><td class="t">${esc(r.t)}</td><td>${esc(r.d)}</td></tr>`).join('')}</table>${z.memo?`<div style="margin-top:4px">메모: ${esc(z.memo)}</div>`:''}${(z.photos||[]).filter(p=>PH.get(p.id)).length?`<div class="pimgs">${z.photos.filter(p=>PH.get(p.id)).map(p=>`<figure><img src="${PH.get(p.id)}" alt=""><figcaption>${esc(p.cap)}</figcaption></figure>`).join('')}</div>`:''}`}).join('')+(st.qs.some(r=>r.q)?`<h3>❓ 여쭤볼 것</h3><table>${st.qs.filter(r=>r.q).map((r,k)=>`<tr><td class="p">${k+1}</td><td>${esc(r.q)}</td><td style="width:40%">${esc(r.a)}</td></tr>`).join('')}</table>`:'');
  const imgs=[...v.querySelectorAll('img')];Promise.all(imgs.map(im=>im.complete?1:new Promise(r=>{im.onload=im.onerror=r}))).then(()=>window.print());
 }
 // ----- 스타일 사진: 줄여서(최대 1280px JPEG) 서버 문서 하나에 한 장씩 저장
